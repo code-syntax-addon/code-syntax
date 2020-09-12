@@ -9,6 +9,8 @@ clasp push
 The script id is stored in .clasp.json.
 Not sure where it came from.
 
+Needs Resources -> Advanced Google Services -> Docs (for the batchUpdate)
+
 
 Looks like we need to go with RPC calls :(
 There doesn't seem to be a way to change the paragraph shading through

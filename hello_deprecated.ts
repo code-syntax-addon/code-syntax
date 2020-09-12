@@ -1,4 +1,5 @@
 import "google-apps-script";
+import "google-apps-script.api";
 
 import docs = GoogleAppsScript.Document;
 type Document = docs.Document;
@@ -25,12 +26,36 @@ function parseBody(body : Body) {
 }
 
 function parseParagraph(paragraph : Paragraph) {
-  if (paragraph.getAttributes()[GoogleAppsScript.Document.Attribute.BACKGROUND_COLOR]) {
+  if (paragraph.getAttributes()[DocumentApp.Attribute.BACKGROUND_COLOR]) {
     return;
   }
   if (paragraph.getText().startsWith('```')) {
     let bg = {}
-    bg[docs.Attribute.BACKGROUND_COLOR] = "#ff0000";
+    bg[DocumentApp.Attribute.BACKGROUND_COLOR] = "#ff0000";
     paragraph.setAttributes(bg);
   }
+  let document_id = DocumentApp.getActiveDocument().getId();
+  let request : GoogleAppsScript.Docs.Schema.Request = {
+    updateParagraphStyle: {
+      range: {
+        startIndex: 5,
+        endIndex: 6,
+      },
+      fields: "shading",
+      paragraphStyle: {
+        shading: {
+          backgroundColor: {
+            color: {
+              rgbColor: {
+                red: 1.0,
+                green: 0.0,
+                blue: 0.0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  Docs.Documents.batchUpdate({requests: [request]}, document_id);
 }

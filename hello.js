@@ -1,8 +1,4 @@
-// Compiled using ts2gas 3.4.4 (TypeScript 3.7.4)
-var exports = exports || {};
-var module = module || { exports: exports };
-//import "google-apps-script";
-//import docs = GoogleAppsScript.Document;
+// Requires Resources -> Advanced Google Services -> Docs.
 function testy() {
     var document = DocumentApp.getActiveDocument();
     var body = document.getBody();
@@ -13,7 +9,7 @@ function testy() {
 function main() {
     var document = DocumentApp.getActiveDocument();
     parseBody(document.getBody());
-  
+
 }
 function parseBody(body) {
     for (var _i = 0, _a = body.getParagraphs(); _i < _a.length; _i++) {
@@ -29,7 +25,6 @@ function parseParagraph(paragraph) {
     }
     var document = DocumentApp.getActiveDocument();
     var document_id = document.getId();
-  var range = document.newRange().addElement(paragraph).build();
     if (paragraph.getText().startsWith('```')) {
       var requests = [
         {
@@ -48,7 +43,7 @@ function parseParagraph(paragraph) {
                 }
               }
             },
-            range: { startIndex: range, endIndex: id + 1},
+            range: { startIndex: 5, endIndex: 6},
             fields: "shading"
           }
         }
