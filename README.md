@@ -18,7 +18,9 @@ Current plan: (2020-12-05)
   * because they have a color.
 - change syntax.
   * start with monofont
+  * clear old formatting?
   * add colors: start by alternating colors
+  * remove ``` lines.
 - find single backticks and make them monofont and colored.
 - real syntax highlighting...
 
