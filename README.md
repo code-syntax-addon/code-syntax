@@ -11,11 +11,13 @@ Not sure where it came from.
 
 Needs Resources -> Advanced Google Services -> Docs (for the batchUpdate)
 
-Current plan: (2020-12-05)
+Current plan: (2020-12-12)
 - documents.get  -- done.
 - identify which paragraphs need syntax.
-  * because they start with three backticks -- still needs to combine with following paragraphs.
+  * because they start with three backticks
+    -- needs to handle cases, where there are \n in the paragraph.
   * because they have a color.
+    -- looks like the color is undefined when it's not set. That needs to be handled.
 - change syntax.
   * start with monofont
   * clear old formatting?

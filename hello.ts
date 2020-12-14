@@ -10,21 +10,38 @@ type Text = docs.Text;
 type Structured = GoogleAppsScript.Docs.Schema.Document;
 type StructuredElement = GoogleAppsScript.Docs.Schema.StructuralElement;
 type StructuredParagraph = GoogleAppsScript.Docs.Schema.Paragraph;
+type RgbColor = GoogleAppsScript.Docs.Schema.RgbColor;
 
-function testy() {
-  let document = DocumentApp.getActiveDocument();
-  let body = document.getBody();
-  let firstLine = body.getText();
+class IndexedParagraph {
+  p: Paragraph;
+  startIndex: number;
+  endIndex: number;
+  backgroundColor: RgbColor;
 
-  body.appendTable([]);
+  constructor(paragraph: Paragraph, startIndex: number, endIndex: number, backgroundColor: RgbColor) {
+    this.p = paragraph;
+    this.startIndex = startIndex;
+    this.endIndex = endIndex;
+    this.backgroundColor = backgroundColor;
+  }
+}
+
+class CodeSegment {
+  paragraphs : Array<IndexedParagraph>;
+  constructor(paragraphs : Array<IndexedParagraph>) {
+    this.paragraphs = paragraphs;
+  }
 }
 
 function main() {
   let document = DocumentApp.getActiveDocument();
-  setBackgroundColors(document);
+  let indexedParagraphs = createIndexedParagraphs(document);
+  let codeSegments = findCodeSegments(indexedParagraphs);
+  setBackgroundColors(document, codeSegments);
 }
 
-function setBackgroundColors(document : docs.Document) {
+function createIndexedParagraphs(document : Document) : Array<IndexedParagraph> {
+  let result : Array<IndexedParagraph> = [];
   let structuredDoc = Docs.Documents.get(document.getId());
   let entries_index = 0;
   let entries = structuredDoc.body.content;
@@ -39,28 +56,57 @@ function setBackgroundColors(document : docs.Document) {
   }
 
   let body = document.getBody();
-
-  let updates : Array<GoogleAppsScript.Docs.Schema.Request> = []
   for (let paragraph of body.getParagraphs()) {
-    let structuredParagraph = nextStructuredParagraph();
-    let request = parseParagraph(paragraph, structuredParagraph);
-    if (request) updates.push(request);
+    let structured = nextStructuredParagraph();
+    let startIndex = structured.startIndex;
+    let endIndex = structured.endIndex;
+    //let color = structured.paragraph.paragraphStyle.shading.backgroundColor.color.rgbColor;
+    // TODO(florian): obviously not everything is white.
+    let color : RgbColor = {
+      red: 255,
+      green: 255,
+      blue: 255,
+    };
+    result.push(new IndexedParagraph(paragraph, startIndex, endIndex, color));
   }
-  if (updates.length != 0) {
-    Docs.Documents.batchUpdate({requests: updates}, document.getId());
-  }
+  return result;
 }
 
-function parseParagraph(paragraph : Paragraph, structuredParagraph : StructuredElement) : GoogleAppsScript.Docs.Schema.Request | undefined {
-  if (paragraph.getAttributes()[DocumentApp.Attribute.BACKGROUND_COLOR]) {
-    return;
+function findCodeSegments(paragraphs : Array<IndexedParagraph>) : Array<CodeSegment> {
+  let result : Array<CodeSegment> = []
+  let inCodeSegment = false;
+  let accumulated : Array<IndexedParagraph> = [];
+  for (let paragraph of paragraphs) {
+    if (paragraph.p.getText().startsWith("```")) {
+      accumulated.push(paragraph);
+      if (inCodeSegment) {
+        console.log("Found segment 1")
+        result.push(new CodeSegment(accumulated));
+        accumulated = [];
+        inCodeSegment = false;
+      } else {
+        inCodeSegment = true;
+
+      }
+    } else if (inCodeSegment) {
+      accumulated.push(paragraph)
+    }
   }
-  if (paragraph.getText().startsWith('```')) {
+  if (accumulated.length != 0) {
+    console.log("Found segment 2")
+    result.push(new CodeSegment(accumulated));
+  }
+  return result;
+}
+
+function setBackgroundColors(document : Document, segments : Array<CodeSegment>) {
+  let requests : Array<GoogleAppsScript.Docs.Schema.Request> = []
+  for (let segment of segments) {
     let request : GoogleAppsScript.Docs.Schema.Request = {
       updateParagraphStyle: {
         range: {
-          startIndex: structuredParagraph.startIndex,
-          endIndex: structuredParagraph.endIndex,
+          startIndex: segment.paragraphs[0].startIndex,
+          endIndex: segment.paragraphs[segment.paragraphs.length - 1].endIndex,
         },
         fields: "shading",
         paragraphStyle: {
@@ -77,8 +123,10 @@ function parseParagraph(paragraph : Paragraph, structuredParagraph : StructuredE
           }
         }
       }
-    }
-    return request;
+    };
+    requests.push(request)
   }
-  return undefined;
+  if (requests.length != 0) {
+    Docs.Documents.batchUpdate({requests: requests}, document.getId());
+  }
 }
