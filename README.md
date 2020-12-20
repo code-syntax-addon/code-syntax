@@ -15,7 +15,8 @@ Current plan: (2020-12-12)
 - documents.get  -- done.
 - identify which paragraphs need syntax.
   * because they start with three backticks
-    -- needs to handle cases, where there are \n in the paragraph.
+    -- needs to handle cases, where there are \r in the paragraph.
+      Now works if the last line starts with ```.
   * because they have a color.
     -- looks like the color is undefined when it's not set. That needs to be handled.
 - change syntax.

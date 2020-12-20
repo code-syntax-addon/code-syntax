@@ -77,23 +77,30 @@ function findCodeSegments(paragraphs : Array<IndexedParagraph>) : Array<CodeSegm
   let inCodeSegment = false;
   let accumulated : Array<IndexedParagraph> = [];
   for (let paragraph of paragraphs) {
-    if (paragraph.p.getText().startsWith("```")) {
-      accumulated.push(paragraph);
+    // TODO(florian): is there a way to split a paragraph into smaller pieces
+    // by replacing one "\r" with "\n" (for example)?
+    let text = paragraph.p.getText()
+    if (text.startsWith("```")) {
       if (inCodeSegment) {
-        console.log("Found segment 1")
+        accumulated.push(paragraph);
         result.push(new CodeSegment(accumulated));
         accumulated = [];
         inCodeSegment = false;
       } else {
         inCodeSegment = true;
-
       }
-    } else if (inCodeSegment) {
+    }
+    if (inCodeSegment) {
       accumulated.push(paragraph)
+      let lines = text.split("\r");
+      if (lines.length > 1 && lines[lines.length - 1].startsWith("```")) {
+        result.push(new CodeSegment(accumulated))
+        accumulated = [];
+        inCodeSegment = false;
+      }
     }
   }
   if (accumulated.length != 0) {
-    console.log("Found segment 2")
     result.push(new CodeSegment(accumulated));
   }
   return result;
