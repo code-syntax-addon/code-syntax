@@ -60,32 +60,62 @@ function createIndexedParagraphs(document : Document) : Array<IndexedParagraph> 
     let structured = nextStructuredParagraph();
     let startIndex = structured.startIndex;
     let endIndex = structured.endIndex;
-    //let color = structured.paragraph.paragraphStyle.shading.backgroundColor.color.rgbColor;
-    // TODO(florian): obviously not everything is white.
-    let color : RgbColor = {
-      red: 255,
-      green: 255,
-      blue: 255,
-    };
+    let color = structured.paragraph.paragraphStyle.shading.backgroundColor?.color?.rgbColor;
     result.push(new IndexedParagraph(paragraph, startIndex, endIndex, color));
   }
   return result;
 }
 
+function sameColor(a : RgbColor, b : RgbColor) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.red == b.red && a.green == b.green && a.blue == b.blue;
+}
+
 function findCodeSegments(paragraphs : Array<IndexedParagraph>) : Array<CodeSegment> {
   let result : Array<CodeSegment> = []
   let inCodeSegment = false;
+  let lastColor = undefined;
   let accumulated : Array<IndexedParagraph> = [];
+
+  function finishCodeSegment() {
+    result.push(new CodeSegment(accumulated));
+    accumulated = [];
+    inCodeSegment = false;
+    lastColor = undefined;
+  }
+
   for (let paragraph of paragraphs) {
+    let color = paragraph.backgroundColor
+    // Color wins over text.
+    if (!sameColor(lastColor, color)) {
+      if (inCodeSegment) {
+        // We were already accumulating.
+        // Doesn't matter if it was because of color or text. We close the old one
+        // and create a new segment.
+        finishCodeSegment();
+      }
+      if (color) {
+        // Start a new segment.
+        inCodeSegment = true;
+        lastColor = color;
+      }
+    }
+
+    if (lastColor) {
+      if (!inCodeSegment) throw "We should be in code segment."
+      // Don't look at text if we are accumulating due to color.
+      accumulated.push(paragraph);
+      continue;
+    }
+
+    let text = paragraph.p.getText()
     // TODO(florian): is there a way to split a paragraph into smaller pieces
     // by replacing one "\r" with "\n" (for example)?
-    let text = paragraph.p.getText()
     if (text.startsWith("```")) {
       if (inCodeSegment) {
         accumulated.push(paragraph);
-        result.push(new CodeSegment(accumulated));
-        accumulated = [];
-        inCodeSegment = false;
+        finishCodeSegment();
       } else {
         inCodeSegment = true;
       }
@@ -94,9 +124,7 @@ function findCodeSegments(paragraphs : Array<IndexedParagraph>) : Array<CodeSegm
       accumulated.push(paragraph)
       let lines = text.split("\r");
       if (lines.length > 1 && lines[lines.length - 1].startsWith("```")) {
-        result.push(new CodeSegment(accumulated))
-        accumulated = [];
-        inCodeSegment = false;
+        finishCodeSegment();
       }
     }
   }
@@ -109,6 +137,11 @@ function findCodeSegments(paragraphs : Array<IndexedParagraph>) : Array<CodeSegm
 function setBackgroundColors(document : Document, segments : Array<CodeSegment>) {
   let requests : Array<GoogleAppsScript.Docs.Schema.Request> = []
   for (let segment of segments) {
+    let color = segment.paragraphs[0].backgroundColor || {
+      red: 1.0,
+      green: 0.0,
+      blue: 0.0
+    }
     let request : GoogleAppsScript.Docs.Schema.Request = {
       updateParagraphStyle: {
         range: {
@@ -120,11 +153,7 @@ function setBackgroundColors(document : Document, segments : Array<CodeSegment>)
           shading: {
             backgroundColor: {
               color: {
-                rgbColor: {
-                  red: 1.0,
-                  green: 0.0,
-                  blue: 0.0
-                }
+                rgbColor: color
               }
             }
           }
