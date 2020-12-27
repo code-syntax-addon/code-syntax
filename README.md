@@ -9,25 +9,33 @@ clasp push
 The script id is stored in .clasp.json.
 Not sure where it came from.
 
-Needs Resources -> Advanced Google Services -> Docs (for the batchUpdate)
-
 Current plan: (2020-12-12)
 - documents.get  -- done.
 - identify which paragraphs need syntax.
   * because they start with three backticks
     -- needs to handle cases, where there are \r in the paragraph.
       Now works if the last line starts with ```.
-  * because they have a color.
-    -- looks like the color is undefined when it's not set. That needs to be handled.
+  * because they have are in a CodeBox.
+- remove ``` lines.
 - change syntax.
-  * start with monofont
+  * start with monofont. -- done.
   * clear old formatting?
   * add colors: start by alternating colors
-  * remove ``` lines.
+
 - find single backticks and make them monofont and colored.
 - real syntax highlighting...
 
 Notes:
+
+Changed from doing RPC calls to creating a table (box) around code segments.
+Even there, the GAS API is missing calls: no way to indent the table.
+So we are storing indented code segments in another table.
+
+
+-------------------------------------------------
+Old, abandoned approach:
+Abandoned, because it required extra permissions, and there was no way to
+easily undo (ctrl-z) the changes from the script.
 
 Looks like we need to go with RPC calls :(
 There doesn't seem to be a way to change the paragraph shading through
