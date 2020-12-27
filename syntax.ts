@@ -200,7 +200,6 @@ function moveParagraphsIntoTables(paras : Array<Paragraph>) {
     secondCell.appendParagraph("");
     secondCell.getChild(0).asParagraph().editAsText().setFontSize(0);
     secondCell.getChild(2).asParagraph().editAsText().setFontSize(0);
-    console.log(secondCell.getNumChildren());
   }
 }
 
