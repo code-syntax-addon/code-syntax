@@ -13,9 +13,9 @@ type Text = docs.Text;
 const CODE_COLOR = "#ffecec"
 
 class CodeSegment {
-  // Whether the code segment is already boxed.
-  // In this case the paragraphs only need a new syntax coloring.
-  alreadyInTable : boolean = false;
+  // Once this code segment is boxed, this field points to the surrounding
+  // table cell.
+  cell : TableCell | undefined = undefined
 
   paragraphs : Array<Paragraph>;
   constructor(paragraphs : Array<Paragraph>) {
@@ -61,7 +61,7 @@ function codeSegmentFromCodeTable(table : Table) : CodeSegment {
     paras.push(para);
   }
   let codeSegment = new CodeSegment(paras);
-  codeSegment.alreadyInTable = true;
+  codeSegment.cell = cell;
   return codeSegment;
 }
 
@@ -145,12 +145,14 @@ function insertTableAt(parent : Element, index : number) : Table {
   return (parent as any).insertTable(index);
 }
 
-function moveParagraphsIntoTables(paras : Array<Paragraph>) {
+function moveParagraphsIntoTables(segment : CodeSegment) {
+  let paras = segment.paragraphs;
   let firstParagraph = paras[0];
   let parent = firstParagraph.getParent();
   let index = parent.getChildIndex(firstParagraph);
   let table = insertTableAt(parent, index);
   let cell = table.appendTableRow().appendTableCell()
+  segment.cell = cell;
 
   let minStart = 999999;
 
@@ -203,11 +205,45 @@ function moveParagraphsIntoTables(paras : Array<Paragraph>) {
   }
 }
 
+function removeBackticks(segment : CodeSegment) {
+  let paragraphs = segment.paragraphs;
+  let first = paragraphs[0];
+  if (!first.getText().startsWith("```")) throw "Unexpected code segment";
+  let last = paragraphs[paragraphs.length - 1]
+  let lineBreak = first.getText().indexOf("\r");
+  if (lineBreak != -1) {
+    first.editAsText().deleteText(0, lineBreak);  // deleteText is inclusive.
+  } else {
+    first.removeFromParent();
+    paragraphs.shift();
+  }
+  let lastText = last.getText();
+  lineBreak = lastText.lastIndexOf("\r");
+  if (lineBreak != -1) {
+    if (lastText.substring(lineBreak + 1, lineBreak + 4) != "```") throw "Unexpected code segment";
+    last.editAsText().deleteText(lineBreak, lastText.length - 1);  // deleteText is inclusive.
+  } else {
+    if (!last.getText().startsWith("```")) throw "Unexpected code segment";
+    last.removeFromParent();
+    paragraphs.length--;
+  }
+  // If we removed all paragraphs, add a fresh one, as Google Docs will otherwise
+  // add one anyway, and we won't change the styling of that one.
+  if (paragraphs.length == 0) {
+    let para = segment.cell.appendParagraph("");
+    segment.paragraphs = [para];
+  }
+}
+
 function boxSegments(segments : Array<CodeSegment>) {
   for (let segment of segments) {
-    if (!segment.alreadyInTable) moveParagraphsIntoTables(segment.paragraphs)
-    let cell = segment.paragraphs[0].getParent().asTableCell();
-    cell.setBackgroundColor("#ffecec");
+    if (!segment.cell) {
+      moveParagraphsIntoTables(segment);
+      // By removing the backticks, we might remove all paragraphs of it.
+      removeBackticks(segment);
+    }
+
+    segment.cell.setBackgroundColor("#ffecec");
     for (let para of segment.paragraphs) {
       para.editAsText().setFontFamily("Roboto Mono");
     }

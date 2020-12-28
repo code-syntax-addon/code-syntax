@@ -16,7 +16,7 @@ Current plan: (2020-12-12)
     -- needs to handle cases, where there are \r in the paragraph.
       Now works if the last line starts with ```.
   * because they have are in a CodeBox.
-- remove ``` lines.
+- remove ``` lines. -- done.
 - change syntax.
   * start with monofont. -- done.
   * clear old formatting?
