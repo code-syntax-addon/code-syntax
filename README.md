@@ -24,6 +24,8 @@ Current plan: (2020-12-12)
   * start with monofont. -- done.
   * clear old formatting?
   * add colors: start by alternating colors
+- background colors should identify which mode is used. Might use the last
+  two bits of each color channel to identify the mode.
 
 - find single backticks and make them monofont and colored.
 - real syntax highlighting...
