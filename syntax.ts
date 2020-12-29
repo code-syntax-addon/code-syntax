@@ -1,6 +1,9 @@
 import "google-apps-script";
 
 import docs = GoogleAppsScript.Document;
+
+declare var codemirror;
+
 type Document = docs.Document;
 type Body = docs.Body;
 type Container = docs.ContainerElement;
@@ -27,7 +30,17 @@ function main() {
   let document = DocumentApp.getActiveDocument();
   let codeSegments = findCodeSegments(document.getBody());
   boxSegments(codeSegments);
-}
+  /*
+  // TODO(florian): use syntax highlighting.
+  codemirror.runMode("ls --color\necho \"$BAR\"\n", "shell", function(token, style){
+    console.log(token, style);
+  });
+
+  codemirror.runMode("main: print \"hello world\"\n", "toit", function(token, style){
+    console.log(token, style);
+  });
+  */
+  }
 
 let defaultWidth = null;
 

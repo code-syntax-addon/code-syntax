@@ -7,7 +7,10 @@ clasp push
 ```
 
 The script id is stored in .clasp.json.
-Not sure where it came from.
+
+Note: we now depend on codemirror library.
+The dependency is written in appsscript.json.
+
 
 Current plan: (2020-12-12)
 - documents.get  -- done.
