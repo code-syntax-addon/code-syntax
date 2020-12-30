@@ -15,22 +15,61 @@ type Table = docs.Table;
 type TableCell = docs.TableCell;
 type Text = docs.Text;
 
-const CODE_COLOR = "#ffecec"
+const MODES = {
+  "" : "#f7f7f7",  // No specified mode.
+  "toit" : "#f2f8ff",
+  "dart" : "#f7fff7",
+  "shell": "#fff7f2",
+  "go": "#f7ffff",
+  "python": "#f7f7ff",
+  "java": {
+    color: "#fffff7",
+    cm: "text/x-java"
+  }
+};
+
+const MODE_TO_CODEMIRROR_MODE : Map<string, string> = new Map();
+const MODE_TO_COLOR : Map<string, string> = new Map();
+const COLOR_TO_MODE : Map<string, string> = new Map();
+
+for (let key of Object.keys(MODES)) {
+  let entry = MODES[key];
+  let color : string;
+  let cm : string;
+  if (typeof entry === "string") {
+    color = entry;
+    cm = key;
+  } else {
+    color = entry.color;
+    cm = entry.cm;
+  }
+  MODE_TO_CODEMIRROR_MODE.set(key, cm);
+  MODE_TO_COLOR.set(key, color);
+  COLOR_TO_MODE.set(color, key);
+}
 
 class CodeSegment {
   // Once this code segment is boxed, this field points to the surrounding
   // table cell.
-  cell : TableCell | undefined = undefined
-
+  cell : TableCell | undefined = undefined;
+  mode : string;
   paragraphs : Array<Paragraph>;
-  constructor(paragraphs : Array<Paragraph>) {
+
+  constructor(paragraphs : Array<Paragraph>, mode : string) {
     this.paragraphs = paragraphs;
+    this.mode = mode;
   }
 }
 
 function main() {
   let document = DocumentApp.getActiveDocument();
   let codeSegments = findCodeSegments(document.getBody());
+  // Filter out segments where we don't know the mode.
+  // Otherwise we would remove the mode line, without giving the user a chance
+  // to fix it.
+  codeSegments = codeSegments.filter(function(segment) {
+    return MODE_TO_CODEMIRROR_MODE.has(segment.mode);
+  });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
 }
@@ -48,10 +87,14 @@ function computeDefaultWidth() : number {
   return defaultWidth;
 }
 
+function isCodeColor(color : string) {
+  return COLOR_TO_MODE.has(color);
+}
+
 function isCodeTable(table : Table) : boolean {
   if (table.getNumRows() != 1 || table.getRow(0).getNumCells() != 1) return false;
   let cell = table.getCell(0, 0);
-  if (cell.getBackgroundColor() != CODE_COLOR) return false;
+  if (!isCodeColor(cell.getBackgroundColor())) return false;
   for (let i = 0; i < cell.getNumChildren(); i++) {
     if (cell.getChild(i).getType() != DocumentApp.ElementType.PARAGRAPH) return false;
   }
@@ -66,7 +109,8 @@ function codeSegmentFromCodeTable(table : Table) : CodeSegment {
     if (para === undefined) throw "Must be paragraph";
     paras.push(para);
   }
-  let codeSegment = new CodeSegment(paras);
+  let mode = COLOR_TO_MODE.get(cell.getBackgroundColor());
+  let codeSegment = new CodeSegment(paras, mode);
   codeSegment.cell = cell;
   return codeSegment;
 }
@@ -88,11 +132,18 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
   let result : Array<CodeSegment> = []
   let inCodeSegment = false;
   let accumulated : Array<Paragraph> = [];
+  let currentMode = "";
+
+  function startCodeSegment(mode : string) {
+    currentMode = mode;
+    accumulated = [];
+    inCodeSegment = true;
+  }
 
   function finishCodeSegment() {
-    result.push(new CodeSegment(accumulated));
-    accumulated = [];
+    result.push(new CodeSegment(accumulated, currentMode));
     inCodeSegment = false;
+    accumulated = null;
   }
 
   for (let i = 0; i < container.getNumChildren(); i++) {
@@ -112,17 +163,16 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
     if (element.getType() != DocumentApp.ElementType.PARAGRAPH) continue;
 
     let paragraph = element.asParagraph();
-    // Color wins over text.
-
     let text = paragraph.getText()
-    // TODO(florian): is there a way to split a paragraph into smaller pieces
-    // by replacing one "\r" with "\n" (for example)?
-    if (text.startsWith("```")) {
-      if (inCodeSegment) {
+    if (text === "```" || text.startsWith("```\r") || text.startsWith("``` ")) {
+      if (!inCodeSegment) {
+        let modeLine = text.split("\r")[0].trim();
+        if (modeLine == "```") modeLine += " "
+        let mode = modeLine.substring("``` ".length);
+        startCodeSegment(mode);
+      } else {
         accumulated.push(paragraph);
         finishCodeSegment();
-      } else {
-        inCodeSegment = true;
       }
     }
     if (inCodeSegment) {
@@ -133,9 +183,7 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
       }
     }
   }
-  if (accumulated.length != 0) {
-    result.push(new CodeSegment(accumulated));
-  }
+  if (inCodeSegment) finishCodeSegment();
   return result;
 }
 
@@ -249,7 +297,7 @@ function boxSegments(segments : Array<CodeSegment>) {
       removeBackticks(segment);
     }
 
-    segment.cell.setBackgroundColor(CODE_COLOR);
+    segment.cell.setBackgroundColor(MODE_TO_COLOR.get(segment.mode));
     for (let para of segment.paragraphs) {
       para.editAsText().setFontFamily("Roboto Mono");
     }
@@ -313,7 +361,8 @@ function highlightSegment(segment : CodeSegment) {
   }
   let current_index = 0;  // The index of the current paragraph.
   let offset = 0;  // The offset within the paragraph.
-  codemirror.runMode(lines, "toit", function(token, style, lineNumber, start) {
+  let cmMode = MODE_TO_CODEMIRROR_MODE.get(segment.mode);
+  codemirror.runMode(lines, cmMode, function(token, style, lineNumber, start) {
     let current = paras[current_index];
     let str = current.getText();
     if (offset == str.length) {
