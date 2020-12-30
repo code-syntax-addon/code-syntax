@@ -249,7 +249,7 @@ function boxSegments(segments : Array<CodeSegment>) {
       removeBackticks(segment);
     }
 
-    segment.cell.setBackgroundColor("#ffecec");
+    segment.cell.setBackgroundColor(CODE_COLOR);
     for (let para of segment.paragraphs) {
       para.editAsText().setFontFamily("Roboto Mono");
     }
@@ -261,7 +261,7 @@ function applyStyle(text : Text, start : number, token : string, style : string)
   let bold = undefined;
   let italic = undefined;
   let foreground = undefined;
-  if (style !== undefined) {
+  if (style !== undefined && style !== null) {
     switch (style) {
       case "comment":
         italic = true;
@@ -317,7 +317,7 @@ function highlightSegment(segment : CodeSegment) {
     let current = paras[current_index];
     let str = current.getText();
     if (offset == str.length) {
-      if (token != "\n" || style !== undefined) {
+      if (token != "\n" || style !== null) {
         throw "Unexpected token";
       }
       current_index++;
