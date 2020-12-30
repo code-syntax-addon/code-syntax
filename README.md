@@ -14,19 +14,20 @@ The dependency is written in appsscript.json.
 
 Current plan: (2020-12-12)
 - documents.get  -- done.
-- identify which paragraphs need syntax.
+- identify which paragraphs need syntax. -- done.
   * because they start with three backticks
     -- needs to handle cases, where there are \r in the paragraph.
       Now works if the last line starts with ```.
   * because they have are in a CodeBox.
 - remove ``` lines. -- done.
-- change syntax.
+- change syntax.  -- done.
   * start with monofont. -- done.
-  * clear old formatting?
-  * add colors: start by alternating colors
+  * clear old formatting? -- not needed.
+  * add colors: start by alternating colors -- went directyl to codemirror.
+
+- get code section mode from string after ```.
 - background colors should identify which mode is used. Might use the last
   two bits of each color channel to identify the mode.
-
 - find single backticks and make them monofont and colored.
 - real syntax highlighting...
 

@@ -1,3 +1,5 @@
+// Copyright (C) 2020 Florian Loitsch. All rights reserved.
+
 import "google-apps-script";
 
 import docs = GoogleAppsScript.Document;
@@ -30,17 +32,8 @@ function main() {
   let document = DocumentApp.getActiveDocument();
   let codeSegments = findCodeSegments(document.getBody());
   boxSegments(codeSegments);
-  /*
-  // TODO(florian): use syntax highlighting.
-  codemirror.runMode("ls --color\necho \"$BAR\"\n", "shell", function(token, style){
-    console.log(token, style);
-  });
-
-  codemirror.runMode("main: print \"hello world\"\n", "toit", function(token, style){
-    console.log(token, style);
-  });
-  */
-  }
+  highlightSegments(codeSegments);
+}
 
 let defaultWidth = null;
 
@@ -261,4 +254,78 @@ function boxSegments(segments : Array<CodeSegment>) {
       para.editAsText().setFontFamily("Roboto Mono");
     }
   }
+}
+
+function applyStyle(text : Text, start : number, token : string, style : string) {
+  let endInclusive = start + token.length - 1;
+  let bold = undefined;
+  let italic = undefined;
+  let foreground = undefined;
+  if (style !== undefined) {
+    switch (style) {
+      case "comment":
+        italic = true;
+        bold = true;
+        foreground = "#498bf1";
+        break;
+      case "def":
+        foreground = "#16aa65";
+        break;
+      case "variable":
+        foreground = "#1ab1cd";
+        break;
+      case "operator":
+        foreground = "#ee11ff";
+        bold = true;
+        break;
+      case "type":
+        foreground = "#74cce1";
+        break;
+      case "string":
+        foreground = "#1ab1ad";
+        break;
+      case "number":
+        foreground = "#a73d14";
+        break;
+      case "keyword":
+        foreground = "#663344";
+        bold = true;
+        break;
+      case "error":
+        foreground = "#ff0c0c";
+        break;
+    }
+  }
+  text.setItalic(start, endInclusive, italic);
+  text.setBold(start, endInclusive, bold);
+  text.setForegroundColor(start, endInclusive, foreground);
+}
+
+function highlightSegments(segments : Array<CodeSegment>) {
+  for (let segment of segments) highlightSegment(segment);
+}
+
+function highlightSegment(segment : CodeSegment) {
+  let paras = segment.paragraphs;
+  let lines : Array<string> = [];
+  for (let para of paras) {
+    lines.push(...para.getText().split("\r"));
+  }
+  let current_index = 0;  // The index of the current paragraph.
+  let offset = 0;  // The offset within the paragraph.
+  codemirror.runMode(lines, "toit", function(token, style, lineNumber, start) {
+    let current = paras[current_index];
+    let str = current.getText();
+    if (offset == str.length) {
+      if (token != "\n" || style !== undefined) {
+        throw "Unexpected token";
+      }
+      current_index++;
+      offset = 0;
+      return;
+    }
+    let text = current.editAsText();
+    applyStyle(text, offset, token, style);
+    offset += token.length;
+  });
 }
