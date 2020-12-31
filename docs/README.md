@@ -25,11 +25,19 @@ Current plan: (2020-12-12)
   * clear old formatting? -- not needed.
   * add colors: start by alternating colors -- went directyl to codemirror.
 
-- get code section mode from string after ```.
+- get code section mode from string after ```.  -- done.
 - background colors should identify which mode is used. Might use the last
   two bits of each color channel to identify the mode.
+  -- done differently. Each mode must have its own color. Just simpler this way.
 - find single backticks and make them monofont and colored.
-- real syntax highlighting...
+  distinguish between:
+  * paths
+  * constants (strings, numbers, null, ...)
+  * remaining code.  (highlight constants there too?)
+- real syntax highlighting...  -- done.
+- add menu (make add-on).
+- add menu-entry to change mode.
+- add more modes. (eventually also add toit-expr mode ?)
 
 Notes:
 
