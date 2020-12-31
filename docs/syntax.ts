@@ -11,9 +11,24 @@ function onInstall(e) {
   onOpen(e);
 }
 
+function changeColorNameFor(mode : string) {
+  return "changeColorTo" + mode;
+}
+
 function onOpen(e) {
-  let menu = DocumentApp.getUi().createAddonMenu();
+  let ui = DocumentApp.getUi();
+  let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
+  let sub = ui.createMenu("Change Mode to");
+  for (let mode of Object.keys(MODES)) {
+    // There is no way to pass a parameter from the menu to a function.
+    // We therefore dynamically create individual functions that can be used
+    // as targets. (See below for the actual creation of the functions.)
+    if (mode === "") mode = "none";
+    let funName = changeColorNameFor(mode);
+    sub.addItem(mode, funName);
+  }
+  menu.addSubMenu(sub);
   menu.addToUi();
 }
 
@@ -30,7 +45,7 @@ type TableCell = docs.TableCell;
 type Text = docs.Text;
 
 const MODES = {
-  "" : "#f7f7f7",  // No specified mode.
+  "none" : "#f7f7f7",  // No specified mode.
   "toit" : "#f2f8ff",
   "dart" : "#f7fff7",
   "shell": "#fff7f2",
@@ -46,20 +61,41 @@ const MODE_TO_CODEMIRROR_MODE : Map<string, string> = new Map();
 const MODE_TO_COLOR : Map<string, string> = new Map();
 const COLOR_TO_MODE : Map<string, string> = new Map();
 
-for (let key of Object.keys(MODES)) {
-  let entry = MODES[key];
+for (let mode of Object.keys(MODES)) {
+  let entry = MODES[mode];
   let color : string;
   let cm : string;
   if (typeof entry === "string") {
     color = entry;
-    cm = key;
+    cm = mode;
   } else {
     color = entry.color;
     cm = entry.cm;
   }
-  MODE_TO_CODEMIRROR_MODE.set(key, cm);
-  MODE_TO_COLOR.set(key, color);
-  COLOR_TO_MODE.set(color, key);
+  MODE_TO_CODEMIRROR_MODE.set(mode, cm);
+  MODE_TO_COLOR.set(mode, color);
+  COLOR_TO_MODE.set(color, mode);
+  // There is no way to pass a parameter from the menu to a function.
+  // We therefore dynamically create individual functions that can be used
+  // as targets.
+  this[changeColorNameFor(mode)] = function() {
+    changeColorTo(mode);
+  }
+}
+
+function changeColorTo(mode : string) {
+  let element = DocumentApp.getActiveDocument().getCursor().getElement();
+  while (element && element.getType() !== DocumentApp.ElementType.TABLE) {
+    element = element.getParent();
+  }
+  if (!element) return;
+  let table = element.asTable();
+  if (!isCodeTable(table)) return;
+  let segment = codeSegmentFromCodeTable(table);
+  segment.mode = mode;
+  let segments = [segment];
+  boxSegments(segments);
+  highlightSegments(segments);
 }
 
 class CodeSegment {
@@ -183,6 +219,7 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
         let modeLine = text.split("\r")[0].trim();
         if (modeLine == "```") modeLine += " "
         let mode = modeLine.substring("``` ".length);
+        if (mode === "") mode = "none";
         startCodeSegment(mode);
       } else {
         accumulated.push(paragraph);
