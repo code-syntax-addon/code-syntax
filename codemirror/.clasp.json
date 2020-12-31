@@ -2,6 +2,7 @@
   "scriptId": "1vKz8xYpdvP9eOAw-C6SHOLX7s-yBPsuVqEJTlWR_c1Vv772lewlbxNrx",
   "filePushOrder": [
     "codemirror_shim.js",
-    "third_party/codemirror/lib/codemirror.js"
+    "third_party/codemirror/lib/codemirror.js",
+    "third_party/codemirror/mode/clike/clike.js"
   ]
 }
