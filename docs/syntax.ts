@@ -78,7 +78,8 @@ for (let mode of Object.keys(MODES)) {
   // There is no way to pass a parameter from the menu to a function.
   // We therefore dynamically create individual functions that can be used
   // as targets.
-  this[changeColorNameFor(mode)] = function() {
+  let self : any = this;
+  self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
   }
 }
