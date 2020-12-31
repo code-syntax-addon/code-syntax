@@ -1,0 +1,16 @@
+Name: Code Mirror
+Short Name: codemirror
+URL: https://github.com/codemirror/codemirror
+Version: 863c18904febf364876494ee650ced49c3b08bd9
+Revision: 863c18904febf364876494ee650ced49c3b08bd9
+Date: 2020-12-29
+License: MIT
+
+Description:
+A versatile text editor.
+We only use the syntax-highlighting part of the project.
+
+The file lib/codemirror.js was generated with `npm install` and copied to here.
+
+The codemirror code assumes that it is executed in a browser and thus needs
+a small shim to run.
