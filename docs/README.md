@@ -23,7 +23,7 @@ Current plan: (2020-12-12)
 - change syntax.  -- done.
   * start with monofont. -- done.
   * clear old formatting? -- not needed.
-  * add colors: start by alternating colors -- went directyl to codemirror.
+  * add colors: start by alternating colors -- went directly to codemirror.
 
 - get code section mode from string after ```.  -- done.
 - background colors should identify which mode is used. Might use the last
@@ -35,8 +35,8 @@ Current plan: (2020-12-12)
   * constants (strings, numbers, null, ...)
   * remaining code.  (highlight constants there too?)
 - real syntax highlighting...  -- done.
-- add menu (make add-on).
-- add menu-entry to change mode.
+- add menu (make add-on).  -- done.
+- add menu-entry to change mode. --done.
 - add more modes. (eventually also add toit-expr mode ?)
 
 Notes:
