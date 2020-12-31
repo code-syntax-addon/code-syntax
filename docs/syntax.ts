@@ -1,3 +1,6 @@
+/**
+ * @OnlyCurrentDoc
+ */
 // Copyright (C) 2020 Florian Loitsch. All rights reserved.
 
 import "google-apps-script";
