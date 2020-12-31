@@ -7,6 +7,17 @@ import "google-apps-script";
 
 import docs = GoogleAppsScript.Document;
 
+function onInstall(e) {
+  onOpen(e);
+}
+
+function onOpen(e) {
+  let menu = DocumentApp.getUi().createAddonMenu();
+  menu.addItem("Colorize", "colorize");
+  menu.addToUi();
+}
+
+
 declare var codemirror;
 
 type Document = docs.Document;
@@ -64,7 +75,7 @@ class CodeSegment {
   }
 }
 
-function main() {
+function colorize() {
   let document = DocumentApp.getActiveDocument();
   let codeSegments = findCodeSegments(document.getBody());
   // Filter out segments where we don't know the mode.
