@@ -21,11 +21,10 @@ function onOpen(e) {
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
   let sub = ui.createMenu("Change Mode to");
-  for (let mode of Object.keys(theme.MODES)) {
+  for (let mode of Object.keys(theme.themer.getModeList())) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
-    if (mode === "") mode = "none";
     let funName = changeColorNameFor(mode);
     sub.addItem(mode, funName);
   }
@@ -45,24 +44,14 @@ type Table = docs.Table;
 type TableCell = docs.TableCell;
 type Text = docs.Text;
 
-const MODE_TO_CODEMIRROR_MODE : Map<string, string> = new Map();
-const MODE_TO_COLOR : Map<string, string> = new Map();
+const MODE_TO_STYLE : Map<string, theme.SegmentStyle> = new Map();
 const COLOR_TO_MODE : Map<string, string> = new Map();
 
-for (let mode of Object.keys(theme.MODES)) {
-  let entry = theme.MODES[mode];
-  let color : string;
-  let cm : string;
-  if (typeof entry === "string") {
-    color = entry;
-    cm = mode;
-  } else {
-    color = entry.color;
-    cm = entry.cm;
-  }
-  MODE_TO_CODEMIRROR_MODE.set(mode, cm);
-  MODE_TO_COLOR.set(mode, color);
+for (let mode of theme.themer.getModeList()) {
+  let segmentStyle = theme.themer.getSegmentStyle(mode);
+  let color = segmentStyle.background;
   COLOR_TO_MODE.set(color, mode);
+  MODE_TO_STYLE.set(mode, segmentStyle);
   // There is no way to pass a parameter from the menu to a function.
   // We therefore dynamically create individual functions that can be used
   // as targets.
@@ -107,7 +96,7 @@ function colorize() {
   // Otherwise we would remove the mode line, without giving the user a chance
   // to fix it.
   codeSegments = codeSegments.filter(function(segment) {
-    return MODE_TO_CODEMIRROR_MODE.has(segment.mode);
+    return MODE_TO_STYLE.has(segment.mode);
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
@@ -348,32 +337,29 @@ function boxSegments(segments : Array<CodeSegment>) {
       removeBackticks(segment);
     }
 
-    segment.cell.setBackgroundColor(MODE_TO_COLOR.get(segment.mode));
+    let style = MODE_TO_STYLE.get(segment.mode);
+    segment.cell.setBackgroundColor(style.background);
     for (let para of segment.paragraphs) {
-      para.editAsText().setFontFamily(theme.FONT_FAMILY);
+      let text = para.editAsText();
+      if (style.foreground) text.setForegroundColor(style.foreground);
+      // Background is set on cell-level.
+      if (style.bold) text.setBold(style.bold);
+      if (style.italic) text.setBold(style.italic);
+      if (style.fontFamily) text.setFontFamily(style.fontFamily);
     }
   }
 }
 
-function applyStyle(text : Text, start : number, token : string, style : string) {
+function applyCodeMirrorStyle(segmentStyle : theme.SegmentStyle, text : Text, start : number, token : string, cmStyle : string) {
+  let style = segmentStyle.codeMirrorStyleToStyle(cmStyle);
   let endInclusive = start + token.length - 1;
-  let bold = undefined;
-  let italic = undefined;
-  let foreground = undefined;
-  if (style !== undefined && style !== null &&
-      style in theme.CODE_MIRROR_STYLES) {
-    let cmStyle = theme.CODE_MIRROR_STYLES[style];
-    if (typeof cmStyle == "string") {
-      foreground = cmStyle;
-    } else {
-      italic = cmStyle.italic;
-      bold = cmStyle.bold;
-      foreground = cmStyle.color;
-    }
-  }
-  text.setItalic(start, endInclusive, italic);
-  text.setBold(start, endInclusive, bold);
-  text.setForegroundColor(start, endInclusive, foreground);
+  // We are setting the values, even if they are undefined, to revert them
+  // to the default (in case they have been set before).
+  text.setItalic(start, endInclusive, style.italic);
+  text.setBold(start, endInclusive, style.bold);
+  text.setForegroundColor(start, endInclusive, style.foreground);
+  text.setBackgroundColor(start, endInclusive, style.background);
+  text.setFontFamily(start, endInclusive, style.fontFamily);
 }
 
 function highlightSegments(segments : Array<CodeSegment>) {
@@ -388,9 +374,9 @@ function highlightSegment(segment : CodeSegment) {
   }
   let current_index = 0;  // The index of the current paragraph.
   let offset = 0;  // The offset within the paragraph.
-  let cmMode = MODE_TO_CODEMIRROR_MODE.get(segment.mode);
-  if (cmMode === undefined) return;  // This happens when the user wrote their own code segment.
-  codemirror.runMode(lines, cmMode, function(token, style, lineNumber, start) {
+  let segmentStyle = MODE_TO_STYLE.get(segment.mode);
+  if (segmentStyle === undefined) return;  // This happens when the user wrote their own code segment.
+  codemirror.runMode(lines, segmentStyle.codeMirrorMode, function(token, style, lineNumber, start) {
     let current = paras[current_index];
     let str = current.getText();
     if (offset == str.length) {
@@ -402,7 +388,7 @@ function highlightSegment(segment : CodeSegment) {
       return;
     }
     let text = current.editAsText();
-    applyStyle(text, offset, token, style);
+    applyCodeMirrorStyle(segmentStyle, text, offset, token, style);
     offset += token.length;
   });
 }
@@ -484,23 +470,18 @@ function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
 function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
   let text = para.editAsText();
   let str = para.getText().substring(startTick + 1, endTick);
-  let foundColor : string = null;
-  for (let i = 0; i < theme.SPAN_COLORS.length; i++) {
-    let entry = theme.SPAN_COLORS[i]
-    let re : RegExp = entry[0] as RegExp;
-    let color : string = entry[1] as string;
-    if (re.test(str)) {
-      foundColor = color;
-      break;
-    }
-  }
-  if (!foundColor) {
+  let style = theme.themer.getCodeSpanStyle(str);
+  if (!style) {
     // Shouldn't happen with the current theme, but we treat this
     // as "don't change anything".
     return;
   }
-  text.setFontFamily(startTick, endTick, theme.FONT_FAMILY);
-  text.setForegroundColor(startTick, endTick, foundColor);
+  text.setFontFamily(startTick, endTick, style.fontFamily);
+  text.setForegroundColor(startTick, endTick, style.foreground);
+  text.setBackgroundColor(startTick, endTick, style.background);
+  text.setBold(startTick, endTick, style.bold);
+  text.setItalic(startTick, endTick, style.italic);
+
   // Delete the end-tick first, as removing the start-tick first, would change the
   // position of the end tick.
   text.deleteText(endTick, endTick);
