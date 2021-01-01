@@ -45,7 +45,15 @@ type TableCell = docs.TableCell;
 type Text = docs.Text;
 
 const FONT_FAMILY = "Roboto Mono";
-const CODESPAN_COLOR = "#000c8c"
+const SPAN_COLORS = [
+  [/^[a-zA-Z_0-9<>]+(\/[a-zA-Z_0-9<>]+)+$/, "#3c003c"], // Path.
+  [/^(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))$/, "#008c0c"], // Number.
+  [/^(["]([^"\\]|[\\]["\\])*["])$/, "#38008c"], // String.
+  [/^([']([^"\\]|[\\]['\\])*['])$/, "#38008c"], // String/Char.
+  [/^(null|undefined|true|false|nil)$/, "#8c0008"], // Keywords.
+  [/^[12]?[0-9]?[0-9](\.[12]?[0-9]?[0-9]){3}$/, "#8c3028"], // IPv4.
+  [/.*/, "#000c8c"], // Rest.
+];
 
 const MODES = {
   "none" : "#f7f7f7",  // No specified mode.
@@ -522,8 +530,24 @@ function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
 
 function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
   let text = para.editAsText();
+  let str = para.getText().substring(startTick + 1, endTick);
+  let foundColor : string = null;
+  for (let i = 0; i < SPAN_COLORS.length; i++) {
+    let entry = SPAN_COLORS[i]
+    let re : RegExp = entry[0] as RegExp;
+    let color : string = entry[1] as string;
+    if (re.test(str)) {
+      foundColor = color;
+      break;
+    }
+  }
+  if (!foundColor) {
+    // Shouldn't happen with the current theme, but we treat this
+    // as "don't change anything".
+    return;
+  }
   text.setFontFamily(startTick, endTick, FONT_FAMILY);
-  text.setForegroundColor(startTick, endTick, CODESPAN_COLOR);
+  text.setForegroundColor(startTick, endTick, foundColor);
   // Delete the end-tick first, as removing the start-tick first, would change the
   // position of the end tick.
   text.deleteText(endTick, endTick);
