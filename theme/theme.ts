@@ -29,7 +29,10 @@ class SegmentStyle extends Style {
   public codeMirrorStyleToStyle(cmStyle : string) : Style  {
     let result = new Style;
     if (cmStyle === undefined || cmStyle === null) return result;
-    if (!(cmStyle in CODE_MIRROR_STYLES)) return result;
+    if (!(cmStyle in CODE_MIRROR_STYLES)) {
+      console.log("Missing style for " + cmStyle);
+      return result;
+    }
     let entry = CODE_MIRROR_STYLES[cmStyle];
     if (typeof entry == "string") {
       result.foreground = entry;
