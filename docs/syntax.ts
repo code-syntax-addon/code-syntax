@@ -4,6 +4,7 @@
 // Copyright (C) 2020 Florian Loitsch. All rights reserved.
 
 import "google-apps-script";
+import * as theme from "../theme/theme";
 
 import docs = GoogleAppsScript.Document;
 
@@ -20,7 +21,7 @@ function onOpen(e) {
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
   let sub = ui.createMenu("Change Mode to");
-  for (let mode of Object.keys(MODES)) {
+  for (let mode of Object.keys(theme.MODES)) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
@@ -44,36 +45,12 @@ type Table = docs.Table;
 type TableCell = docs.TableCell;
 type Text = docs.Text;
 
-const FONT_FAMILY = "Roboto Mono";
-const SPAN_COLORS = [
-  [/^[a-zA-Z_0-9<>]+(\/[a-zA-Z_0-9<>]+)+$/, "#3c003c"], // Path.
-  [/^(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))$/, "#008c0c"], // Number.
-  [/^(["]([^"\\]|[\\]["\\])*["])$/, "#38008c"], // String.
-  [/^([']([^"\\]|[\\]['\\])*['])$/, "#38008c"], // String/Char.
-  [/^(null|undefined|true|false|nil)$/, "#8c0008"], // Keywords.
-  [/^[12]?[0-9]?[0-9](\.[12]?[0-9]?[0-9]){3}$/, "#8c3028"], // IPv4.
-  [/.*/, "#000c8c"], // Rest.
-];
-
-const MODES = {
-  "none" : "#f7f7f7",  // No specified mode.
-  "toit" : "#f2f8ff",
-  "dart" : "#f7fff7",
-  "shell": "#fff7f2",
-  "go": "#f7ffff",
-  "python": "#f7f7ff",
-  "java": {
-    color: "#fffff7",
-    cm: "text/x-java"
-  }
-};
-
 const MODE_TO_CODEMIRROR_MODE : Map<string, string> = new Map();
 const MODE_TO_COLOR : Map<string, string> = new Map();
 const COLOR_TO_MODE : Map<string, string> = new Map();
 
-for (let mode of Object.keys(MODES)) {
-  let entry = MODES[mode];
+for (let mode of Object.keys(theme.MODES)) {
+  let entry = theme.MODES[mode];
   let color : string;
   let cm : string;
   if (typeof entry === "string") {
@@ -373,7 +350,7 @@ function boxSegments(segments : Array<CodeSegment>) {
 
     segment.cell.setBackgroundColor(MODE_TO_COLOR.get(segment.mode));
     for (let para of segment.paragraphs) {
-      para.editAsText().setFontFamily(FONT_FAMILY);
+      para.editAsText().setFontFamily(theme.FONT_FAMILY);
     }
   }
 }
@@ -532,8 +509,8 @@ function highlightCodeSpan(para : Paragraph, startTick : number, endTick : numbe
   let text = para.editAsText();
   let str = para.getText().substring(startTick + 1, endTick);
   let foundColor : string = null;
-  for (let i = 0; i < SPAN_COLORS.length; i++) {
-    let entry = SPAN_COLORS[i]
+  for (let i = 0; i < theme.SPAN_COLORS.length; i++) {
+    let entry = theme.SPAN_COLORS[i]
     let re : RegExp = entry[0] as RegExp;
     let color : string = entry[1] as string;
     if (re.test(str)) {
@@ -546,7 +523,7 @@ function highlightCodeSpan(para : Paragraph, startTick : number, endTick : numbe
     // as "don't change anything".
     return;
   }
-  text.setFontFamily(startTick, endTick, FONT_FAMILY);
+  text.setFontFamily(startTick, endTick, theme.FONT_FAMILY);
   text.setForegroundColor(startTick, endTick, foundColor);
   // Delete the end-tick first, as removing the start-tick first, would change the
   // position of the end tick.
