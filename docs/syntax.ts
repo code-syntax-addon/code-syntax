@@ -360,39 +360,15 @@ function applyStyle(text : Text, start : number, token : string, style : string)
   let bold = undefined;
   let italic = undefined;
   let foreground = undefined;
-  if (style !== undefined && style !== null) {
-    switch (style) {
-      case "comment":
-        italic = true;
-        bold = true;
-        foreground = "#498bf1";
-        break;
-      case "def":
-        foreground = "#16aa65";
-        break;
-      case "variable":
-        foreground = "#1ab1cd";
-        break;
-      case "operator":
-        foreground = "#ee11ff";
-        bold = true;
-        break;
-      case "type":
-        foreground = "#74cce1";
-        break;
-      case "string":
-        foreground = "#1ab1ad";
-        break;
-      case "number":
-        foreground = "#a73d14";
-        break;
-      case "keyword":
-        foreground = "#663344";
-        bold = true;
-        break;
-      case "error":
-        foreground = "#ff0c0c";
-        break;
+  if (style !== undefined && style !== null &&
+      style in theme.CODE_MIRROR_STYLES) {
+    let cmStyle = theme.CODE_MIRROR_STYLES[style];
+    if (typeof cmStyle == "string") {
+      foreground = cmStyle;
+    } else {
+      italic = cmStyle.italic;
+      bold = cmStyle.bold;
+      foreground = cmStyle.color;
     }
   }
   text.setItalic(start, endInclusive, italic);

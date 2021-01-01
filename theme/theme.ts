@@ -5,6 +5,7 @@ export {
   FONT_FAMILY,
   SPAN_COLORS,
   MODES,
+  CODE_MIRROR_STYLES,
 }
 
 const FONT_FAMILY = "Roboto Mono";
@@ -29,4 +30,26 @@ const MODES = {
     color: "#fffff7",
     cm: "text/x-java"
   }
+};
+
+const CODE_MIRROR_STYLES = {
+  "comment": {
+    italic: true,
+    bold: true,
+    color: "#498bf1",
+  },
+  "def": "#16aa65",
+  "variable": "#1ab1cd",
+  "operator": {
+    bold: true,
+    color: "#ee11ff",
+  },
+  "type": "#74cce1",
+  "string": "#1ab1ad",
+  "number": "#a73d14",
+  "keyword": {
+    bold: true,
+    color: "#663344",
+  },
+  "error": "#ff0c0c",
 };
