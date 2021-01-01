@@ -111,23 +111,50 @@ const MODES = {
 };
 
 const CODE_MIRROR_STYLES = {
-  "comment": {
-    italic: true,
+  "header": {
     bold: true,
-    color: "#498bf1",
+    color: "#0000ff",
   },
-  "def": "#16aa65",
+  "quote": "#009000",
+  "negative": "#d04040",
+  "positive": "#209020",
+  "strong": {
+    bold: true,
+  },
+  "em": {
+    italic: true,
+  },
+  "keyword": {
+    bold: true,
+    color: "#700080",
+  },
+  "atom": "#201090",
+  "number": "#106040",
+  "def": "#0000f0",
   "variable": "#1ab1cd",
+  "punctuation": "#0f5057",
+  "property": "#572000",
   "operator": {
     bold: true,
     color: "#ee11ff",
   },
-  "type": "#74cce1",
-  "string": "#1ab1ad",
-  "number": "#a73d14",
-  "keyword": {
-    bold: true,
-    color: "#663344",
+  "variable-2": "#0050a0",
+  "variable-3": "#008050",
+  "type": "#008050",
+  "comment": {
+    italic: true,
+    color: "#a05000",
   },
-  "error": "#ff0c0c",
+  "string": "#a01010",
+  "string-2": "#f05000",
+  "meta": "#505050",
+  "qualifier": "#505050",
+  "builtin": "#3000a0",
+  "bracket": "#909070",
+  "tag": "#107000",
+  "attribute": "#0000c0",
+  "hr": "#909090",
+  "link": "#0000c0",
+  "error": "#f00000",
+  "invalidchar": "#f00000",
 };
