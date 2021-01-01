@@ -92,6 +92,10 @@ class CodeSegment {
 function colorize() {
   let document = DocumentApp.getActiveDocument();
   let codeSegments = findCodeSegments(document.getBody());
+  // Highlight code spans before we filter out the unknown code segments.
+  // We don't want to modify unknown segments at all.
+  highlightCodeSpansAndTitles(codeSegments);
+
   // Filter out segments where we don't know the mode.
   // Otherwise we would remove the mode line, without giving the user a chance
   // to fix it.
@@ -100,7 +104,6 @@ function colorize() {
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
-  highlightCodeSpansAndTitles(codeSegments);
 }
 
 let defaultWidth = null;
@@ -211,7 +214,12 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
       }
     }
   }
-  if (inCodeSegment) finishCodeSegment();
+  if (inCodeSegment) {
+    // Unfinished code segments are closed, but not modified.
+    // By setting a mode we don't know, we won't touch it.
+    currentMode = "<unfinished>";
+    finishCodeSegment();
+  }
   return result;
 }
 
@@ -437,7 +445,7 @@ function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
     // We go from back to front, so that we can remove the ticks without needing to worry
     // about the fact that we modify the paragraph in the meantime.
     let lastTick = text.length + 1;
-    while (true) {
+    while (lastTick > 1) {  // We need at least two characters.
       let endTick = text.lastIndexOf("`", lastTick - 1);
       if (endTick === -1) break;
       let startTick = text.lastIndexOf("`", endTick - 1);
