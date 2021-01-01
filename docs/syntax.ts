@@ -266,6 +266,18 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
     if (minStart !== null && start < minStart) minStart = start;
   }
 
+  // We need to be careful here: if the code segment is the last entry in a
+  // document, then we are not allowed to remove the last paragraph. There
+  // must always be a paragraph at the end.
+  let lastIndex = parent.getChildIndex(paras[paras.length - 1]);
+  if (parent.getType() == DocumentApp.ElementType.BODY_SECTION &&
+      lastIndex == parent.getNumChildren() - 1) {
+    // This is the last entry, and we are going to replace the paragraphs
+    // with a table. We thus need to add a new paragraph, just to make sure
+    // there is always a paragraph at the end.
+    parent.asBody().appendParagraph("");
+  }
+
   for (let para of paras) {
     para.removeFromParent();
     cell.appendParagraph(para);
