@@ -406,6 +406,13 @@ function computeElementPath(element : Element) : string {
   }
 }
 
+const HEADINGS = {
+  "#": DocumentApp.ParagraphHeading.TITLE,
+  "##": DocumentApp.ParagraphHeading.HEADING1,
+  "###": DocumentApp.ParagraphHeading.HEADING2,
+  "####": DocumentApp.ParagraphHeading.HEADING3,
+}
+
 function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
   let inCodeSegments = new Set<string>();
 
@@ -417,9 +424,14 @@ function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
     }
   }
 
+  // We don't change the headings right away, as this would change the paths
+  // of the paragraphs.
+  // Instead we record the changes we would like to do, and then do them
+  // once we have run through all paragraphs.
+  let headingsToChange = [];
   for (let para of DocumentApp.getActiveDocument().getBody().getParagraphs()) {
     if (inCodeSegments.has(computeElementPath(para))) {
-      continue
+      continue;
     }
     let text = para.getText();
     // We go from back to front, so that we can remove the ticks without needing to worry
@@ -442,27 +454,32 @@ function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
       highlightCodeSpan(para, startTick, endTick);
       lastTick = startTick;
     }
-    let HEADINGS = {
-      "#": DocumentApp.ParagraphHeading.TITLE,
-      "##": DocumentApp.ParagraphHeading.HEADING1,
-      "###": DocumentApp.ParagraphHeading.HEADING2,
-      "####": DocumentApp.ParagraphHeading.HEADING3,
-    }
     for (let heading of Object.keys(HEADINGS)) {
       if (text.startsWith(heading + " ")) {
-        para.setHeading(HEADINGS[heading]);
-        // `deleteText` is inclusive, so no need for +1 for the space.
-        para.editAsText().deleteText(0, heading.length);
-        // If the previous sibling is just an empty paragraph, then we remove it.
-        // The new heading adds spacing by itself.
-        let sibling = para.getPreviousSibling();
-        if (sibling) {
-          if (sibling.getType() === DocumentApp.ElementType.PARAGRAPH &&
-              sibling.asParagraph().getText() == "") {
-            sibling.removeFromParent();
-          }
-        }
+        headingsToChange.push({
+          para: para,
+          heading: heading,
+        })
         break;
+      }
+    }
+  }
+  // Now we can change the paragraphs to headings without worrying about
+  // their paths.
+  for (let headingToChange of headingsToChange) {
+    let para = headingToChange.para;
+    let heading = headingToChange.heading;
+
+    para.setHeading(HEADINGS[heading]);
+    // `deleteText` is inclusive, so no need for +1 for the space.
+    para.editAsText().deleteText(0, heading.length);
+    // If the previous sibling is just an empty paragraph, then we remove it.
+    // The new heading adds spacing by itself.
+    let sibling = para.getPreviousSibling();
+    if (sibling) {
+      if (sibling.getType() === DocumentApp.ElementType.PARAGRAPH &&
+          sibling.asParagraph().getText() == "") {
+        sibling.removeFromParent();
       }
     }
   }
