@@ -44,6 +44,9 @@ type Table = docs.Table;
 type TableCell = docs.TableCell;
 type Text = docs.Text;
 
+const FONT_FAMILY = "Roboto Mono";
+const CODESPAN_COLOR = "#000c8c"
+
 const MODES = {
   "none" : "#f7f7f7",  // No specified mode.
   "toit" : "#f2f8ff",
@@ -123,6 +126,7 @@ function colorize() {
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
+  highlightCodeSpans(codeSegments);
 }
 
 let defaultWidth = null;
@@ -361,7 +365,7 @@ function boxSegments(segments : Array<CodeSegment>) {
 
     segment.cell.setBackgroundColor(MODE_TO_COLOR.get(segment.mode));
     for (let para of segment.paragraphs) {
-      para.editAsText().setFontFamily("Roboto Mono");
+      para.editAsText().setFontFamily(FONT_FAMILY);
     }
   }
 }
@@ -440,4 +444,65 @@ function highlightSegment(segment : CodeSegment) {
     applyStyle(text, offset, token, style);
     offset += token.length;
   });
+}
+
+// Assumes that the element is part of the document.
+// We don't check that the parent eventually ends up being the document.
+function computeElementPath(element : Element) : string {
+  let result = "";
+  while (true) {
+    let parent = element.getParent();
+    if (!parent) return result;
+    result += ":" + parent.getChildIndex(element);
+    element = parent;
+  }
+}
+
+function highlightCodeSpans(segments : Array<CodeSegment>) {
+  let inCodeSegments = new Set<string>();
+
+  // Mark the paragraphs that are inside a code segment, so we don't change
+  // them.
+  for (let segment of segments) {
+    for (let para of segment.paragraphs) {
+      inCodeSegments.add(computeElementPath(para));
+    }
+  }
+
+  for (let para of DocumentApp.getActiveDocument().getBody().getParagraphs()) {
+    if (inCodeSegments.has(computeElementPath(para))) {
+      continue
+    }
+    let text = para.getText();
+    // We go from back to front, so that we can remove the ticks without needing to worry
+    // about the fact that we modify the paragraph in the meantime.
+    let lastTick = text.length + 1;
+    while (true) {
+      let endTick = text.lastIndexOf("`", lastTick - 1);
+      if (endTick === -1) break;
+      let startTick = text.lastIndexOf("`", endTick - 1);
+      if (startTick === -1) break;  // We don't support backticks that span multiple paragraphs.
+      if (startTick + 1 === endTick) {
+        // If we have two backticks next to each other, just consume all backticks that are
+        // there without doing anything.
+        // This makes ``` in a text less dangerous.
+        let i = startTick - 1;
+        while (i >= 0 && text[i] === '`') i--;
+        lastTick = i + 1;
+        continue;
+      }
+      highlightCodeSpan(para, startTick, endTick);
+      lastTick = startTick;
+    }
+  }
+}
+
+function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
+  let text = para.editAsText();
+  text.setFontFamily(startTick, endTick, FONT_FAMILY);
+  text.setForegroundColor(startTick, endTick, CODESPAN_COLOR);
+  // Delete the end-tick first, as removing the start-tick first, would change the
+  // position of the end tick.
+  text.deleteText(endTick, endTick);
+  text.deleteText(startTick, startTick);
 }
