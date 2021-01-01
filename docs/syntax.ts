@@ -138,14 +138,11 @@ function computeDefaultWidth() : number {
   return defaultWidth;
 }
 
-function isCodeColor(color : string) {
-  return COLOR_TO_MODE.has(color);
-}
-
+// A code table has exactly one cell with a background color.
 function isCodeTable(table : Table) : boolean {
   if (table.getNumRows() != 1 || table.getRow(0).getNumCells() != 1) return false;
   let cell = table.getCell(0, 0);
-  if (!isCodeColor(cell.getBackgroundColor())) return false;
+  if (!cell.getBackgroundColor()) return false;  // Must have some color, but we don't check whether it's a valid one.
   for (let i = 0; i < cell.getNumChildren(); i++) {
     if (cell.getChild(i).getType() != DocumentApp.ElementType.PARAGRAPH) return false;
   }
@@ -160,7 +157,8 @@ function codeSegmentFromCodeTable(table : Table) : CodeSegment {
     if (para === undefined) throw "Must be paragraph";
     paras.push(para);
   }
-  let mode = COLOR_TO_MODE.get(cell.getBackgroundColor());
+  let backColor = cell.getBackgroundColor();
+  let mode = COLOR_TO_MODE.get(backColor) || "<unknown>";
   let codeSegment = new CodeSegment(paras, mode);
   codeSegment.cell = cell;
   return codeSegment;
@@ -414,6 +412,7 @@ function highlightSegment(segment : CodeSegment) {
   let current_index = 0;  // The index of the current paragraph.
   let offset = 0;  // The offset within the paragraph.
   let cmMode = MODE_TO_CODEMIRROR_MODE.get(segment.mode);
+  if (cmMode === undefined) return;  // This happens when the user wrote their own code segment.
   codemirror.runMode(lines, cmMode, function(token, style, lineNumber, start) {
     let current = paras[current_index];
     let str = current.getText();
