@@ -94,7 +94,7 @@ function colorize() {
   let codeSegments = findCodeSegments(document.getBody());
   // Highlight code spans before we filter out the unknown code segments.
   // We don't want to modify unknown segments at all.
-  highlightCodeSpansAndTitles(codeSegments);
+  highlightCodeSpansAndHeadings(codeSegments);
 
   // Filter out segments where we don't know the mode.
   // Otherwise we would remove the mode line, without giving the user a chance
@@ -421,7 +421,7 @@ const HEADINGS = {
   "####": DocumentApp.ParagraphHeading.HEADING3,
 }
 
-function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
+function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
   let inCodeSegments = new Set<string>();
 
   // Mark the paragraphs that are inside a code segment, so we don't change
