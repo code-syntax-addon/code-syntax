@@ -126,7 +126,7 @@ function colorize() {
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
-  highlightCodeSpans(codeSegments);
+  highlightCodeSpansAndTitles(codeSegments);
 }
 
 let defaultWidth = null;
@@ -458,7 +458,7 @@ function computeElementPath(element : Element) : string {
   }
 }
 
-function highlightCodeSpans(segments : Array<CodeSegment>) {
+function highlightCodeSpansAndTitles(segments : Array<CodeSegment>) {
   let inCodeSegments = new Set<string>();
 
   // Mark the paragraphs that are inside a code segment, so we don't change
@@ -493,6 +493,29 @@ function highlightCodeSpans(segments : Array<CodeSegment>) {
       }
       highlightCodeSpan(para, startTick, endTick);
       lastTick = startTick;
+    }
+    let HEADINGS = {
+      "#": DocumentApp.ParagraphHeading.TITLE,
+      "##": DocumentApp.ParagraphHeading.HEADING1,
+      "###": DocumentApp.ParagraphHeading.HEADING2,
+      "####": DocumentApp.ParagraphHeading.HEADING3,
+    }
+    for (let heading of Object.keys(HEADINGS)) {
+      if (text.startsWith(heading + " ")) {
+        para.setHeading(HEADINGS[heading]);
+        // `deleteText` is inclusive, so no need for +1 for the space.
+        para.editAsText().deleteText(0, heading.length);
+        // If the previous sibling is just an empty paragraph, then we remove it.
+        // The new heading adds spacing by itself.
+        let sibling = para.getPreviousSibling();
+        if (sibling) {
+          if (sibling.getType() === DocumentApp.ElementType.PARAGRAPH &&
+              sibling.asParagraph().getText() == "") {
+            sibling.removeFromParent();
+          }
+        }
+        break;
+      }
     }
   }
 }
