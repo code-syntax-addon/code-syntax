@@ -351,6 +351,7 @@ function boxSegments(segments : Array<CodeSegment>) {
 }
 
 function applyCodeMirrorStyle(segmentStyle : theme.SegmentStyle, text : Text, start : number, token : string, cmStyle : string) {
+  if (token === "") return;
   let style = segmentStyle.codeMirrorStyleToStyle(cmStyle);
   let endInclusive = start + token.length - 1;
   // We are setting the values, even if they are undefined, to revert them
