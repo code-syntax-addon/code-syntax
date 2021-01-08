@@ -21,7 +21,7 @@ function onOpen(e) {
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
   let sub = ui.createMenu("Change Mode to");
-  for (let mode of Object.keys(theme.themer.getModeList())) {
+  for (let mode of theme.themer.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
