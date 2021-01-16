@@ -50,7 +50,9 @@ const COLOR_TO_MODE : Map<string, string> = new Map();
 for (let mode of theme.themer.getModeList()) {
   let segmentStyle = theme.themer.getSegmentStyle(mode);
   let color = segmentStyle.background;
-  COLOR_TO_MODE.set(color, mode);
+  // We don't want to deal with different casing later on.
+  COLOR_TO_MODE.set(color.toLowerCase(), mode);
+  COLOR_TO_MODE.set(color.toUpperCase(), mode);
   MODE_TO_STYLE.set(mode, segmentStyle);
   // There is no way to pass a parameter from the menu to a function.
   // We therefore dynamically create individual functions that can be used
