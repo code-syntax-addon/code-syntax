@@ -113,9 +113,3 @@ function removeBackticksAndBox(codeShape : CodeShape) {
     text.getRange(0, endOfFirstLine + 1).clear();
   }
 }
-
-function colorShape(shape : Shape) {
-  let type = shape.getShapeType();
-  if (type != SlidesApp.ShapeType.TEXT_BOX) return;
-  shape.getFill().setSolidFill("#eeeeff");
-}
