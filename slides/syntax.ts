@@ -36,6 +36,7 @@ declare var codemirror;
 type Slide = slides.Slide;
 type Shape = slides.Shape;
 type TextRange = slides.TextRange;
+type PageElement = slides.PageElement;
 
 class CodeShape {
   shape : Shape;
@@ -58,6 +59,16 @@ class CodeShape {
     let mode = firstLine.substring(3).trim();  // Skip the triple-quotes.
     if (mode === "") mode = "none";
     return new CodeShape(shape, mode);
+  }
+}
+
+class CodeSpan {
+  from : number;
+  to : number;
+
+  constructor(from : number, to : number) {
+    this.from = from;
+    this.to = to;
   }
 }
 
@@ -97,10 +108,7 @@ function changeColorTo(mode : string) {
 
 function colorize() {
   let pres = SlidesApp.getActivePresentation();
-  let slides = pres.getSlides();
-  for (let slide of slides) {
-    doSlide(slide);
-  }
+  pres.getSlides().forEach(doSlide);
 }
 
 function colorizeSlide() {
@@ -111,25 +119,34 @@ function colorizeSlide() {
   doSlide(slide);
 }
 
-function doSlide(slide) {
-  // It's important that we reuse the shapes we get from here, so that
-  // the identity function works.
-  let shapes = slide.getShapes();
-  for (let shape of shapes) {
-    let codeShape : CodeShape;
-    if (isBoxedCodeShape(shape)) {
-      codeShape = CodeShape.fromBoxed(shape);
-      colorizeCodeShape(codeShape);
-    } else if (isTextCodeShape(shape)) {
-      codeShape = CodeShape.fromText(shape);
-      // Box first, as this makes it easier to apply text styles.
-      // GAS doesn't like it when there is no text.
-      boxShape(codeShape);
-      removeTripleBackticks(codeShape);
-      colorizeCodeShape(codeShape);
-    } else {
-      colorizeSpans(shape);
-    }
+function doSlide(slide : Slide) {
+  slide.getPageElements().forEach(doPageElement);
+}
+
+function doPageElement(element : PageElement) {
+  if (element.getPageElementType() == SlidesApp.PageElementType.SHAPE) {
+    doShape(element.asShape());
+  } else if (element.getPageElementType() == SlidesApp.PageElementType.GROUP) {
+    let group = element.asGroup();
+    let children = group.getChildren()
+    children.forEach(doPageElement);
+  }
+}
+
+function doShape(shape : Shape) {
+  let codeShape : CodeShape;
+  if (isBoxedCodeShape(shape)) {
+    codeShape = CodeShape.fromBoxed(shape);
+    colorizeCodeShape(codeShape);
+  } else if (isTextCodeShape(shape)) {
+    codeShape = CodeShape.fromText(shape);
+    // Box first, as this makes it easier to apply text styles.
+    // GAS doesn't like it when there is no text.
+    boxShape(codeShape);
+    removeTripleBackticks(codeShape);
+    colorizeCodeShape(codeShape);
+  } else {
+    colorizeSpans(shape);
   }
 }
 
@@ -196,16 +213,6 @@ function colorizeCodeShape(codeShape : CodeShape) {
     applyStyle(range, style)
     offset += token.length;
   });
-}
-
-class CodeSpan {
-  from : number;
-  to : number;
-
-  constructor(from : number, to : number) {
-    this.from = from;
-    this.to = to;
-  }
 }
 
 function colorizeSpans(shape : Shape) {
