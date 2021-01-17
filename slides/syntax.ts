@@ -18,6 +18,7 @@ function onOpen(e) {
   let ui = SlidesApp.getUi();
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
+  menu.addItem("Colorize Slide", "colorizeSlide");
   let sub = ui.createMenu("Change Mode to");
   for (let mode of theme.themer.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
@@ -100,6 +101,14 @@ function colorize() {
   for (let slide of slides) {
     doSlide(slide);
   }
+}
+
+function colorizeSlide() {
+  let selection = SlidesApp.getActivePresentation().getSelection();
+  let currentPage = selection.getCurrentPage();
+  if (currentPage.getPageType() != SlidesApp.PageType.SLIDE) return;
+  let slide = currentPage.asSlide();
+  doSlide(slide);
 }
 
 function doSlide(slide) {
