@@ -11,6 +11,7 @@ declare var codemirror;
 
 type Slide = slides.Slide;
 type Shape = slides.Shape;
+type TextRange = slides.TextRange;
 
 class CodeShape {
   shape : Shape;
@@ -48,24 +49,42 @@ for (let mode of theme.themer.getModeList()) {
 function main() {
   let pres = SlidesApp.getActivePresentation();
   let slides = pres.getSlides();
-  let codeShapes : Array<CodeShape> = [];
   for (let slide of slides) {
-    codeShapes.push(...findCodeShapes(slide));
+    doSlide(slide);
   }
-  for (let shape of codeShapes) {
-    if (shape.hasBackticks && MODE_TO_STYLE.get(shape.mode)) {
-      removeBackticksAndBox(shape);
+}
+
+function doSlide(slide) {
+  // It's important that we reuse the shapes we get from here, so that
+  // the identity function works.
+  let shapes = slide.getShapes();
+  let codeShapes = findCodeShapes(shapes);
+  let codeSet : Set<Shape> = new Set();
+  for (let codeShape of codeShapes) {
+    codeSet.add(codeShape.shape);
+    let mode = codeShape.mode;
+    if (!isValidMode(mode)) continue;
+    if (codeShape.hasBackticks) {
+      removeBackticksAndBox(codeShape);
     }
+    colorize(codeShape);
   }
+  for (let shape of shapes) {
+    if (codeSet.has(shape)) continue;
+    colorizeSpans(shape);
+  }
+}
+
+function isValidMode(mode : string) : boolean {
+  return MODE_TO_STYLE.get(mode) !== undefined;
 }
 
 function modeFromColor(color : string) : string {
   return COLOR_TO_MODE.get(color) || "<unknown>";
 }
 
-function findCodeShapes(slide : Slide) : Array<CodeShape> {
+function findCodeShapes(shapes : Array<Shape>) : Array<CodeShape> {
   let result : Array<CodeShape> = [];
-  let shapes = slide.getShapes();
   for (let shape of shapes) {
     if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) continue;
     let background = shape.getFill().getSolidFill();
@@ -112,4 +131,81 @@ function removeBackticksAndBox(codeShape : CodeShape) {
     text.getRange(startOfLastLine, startOfLastLine + 4).clear();
     text.getRange(0, endOfFirstLine + 1).clear();
   }
+}
+
+function colorize(codeShape : CodeShape) {
+  let shape = codeShape.shape;
+  let mode = codeShape.mode;
+  let text = shape.getText()
+  let str = text.asString();
+  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
+  let offset = 0;
+  codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token, tokenStyle) {
+    let range = text.getRange(offset, offset + token.length);
+    let style = codeMirrorStyle.codeMirrorStyleToStyle(tokenStyle);
+    applyStyle(range, style)
+    offset += token.length;
+  });
+}
+
+class CodeSpan {
+  from : number;
+  to : number;
+
+  constructor(from : number, to : number) {
+    this.from = from;
+    this.to = to;
+  }
+}
+
+function colorizeSpans(shape : Shape) {
+  let text = shape.getText();
+  if (text.isEmpty()) return;
+  let str = text.asString();
+  let spans : Array<CodeSpan> = [];
+  let currentOffset = -1
+  while (currentOffset < str.length) {
+    let start = str.indexOf('`', currentOffset);
+    if (start === -1) break;
+    let end = str.indexOf('`', start + 1);
+    if (end === -1) break;
+    let newline = str.indexOf('\n', start);
+    // We don't allow code spans to go over multiple lines.
+    // TODO(florian): maybe we should?
+    if (newline < end) {
+      currentOffset = newline;
+      continue;
+    }
+    // If we have backticks next to each other, just consume all of them.
+    if (start === end - 1) {
+      while (str[end] === '`') end++;
+      currentOffset = end + 1;
+    }
+    spans.push(new CodeSpan(start, end));
+    currentOffset = end + 1;
+  }
+  // Handle the spans from the last to the first, so we don't change the positions
+  // in the wrong order.
+  for (let i = spans.length - 1; i >= 0; i--) {
+    let span = spans[i];
+    let rangeText = text.asString().substring(span.from + 1, span.to - 1)
+    let style = theme.themer.getCodeSpanStyle(rangeText);
+    // We change the section with the back-ticks, and then remove the ticks afterwards.
+    // This way we never have to deal with empty strings.
+    let range = text.getRange(span.from, span.to);
+    applyStyle(range, style);
+    text.getRange(span.from, span.from + 1).clear();
+    text.getRange(span.to - 1, span.to).clear();
+  }
+}
+
+function applyStyle(range : TextRange, style : theme.Style) {
+  let textStyle = range.getTextStyle();
+  // We are setting the values, even if they are undefined, to revert them
+  // to the default (in case they have been set before).
+  if (style.italic !== undefined) textStyle.setItalic(style.italic);
+  if (style.bold !== undefined) textStyle.setBold(style.bold);
+  if (style.foreground !== undefined) textStyle.setForegroundColor(style.foreground);
+  if (style.background !== undefined) textStyle.setBackgroundColor(style.background);
+  if (style.fontFamily !== undefined) textStyle.setFontFamily(style.fontFamily);
 }
