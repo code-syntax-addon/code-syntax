@@ -7,6 +7,29 @@ import "google-apps-script";
 import slides = GoogleAppsScript.Slides;
 import * as theme from "../theme/theme";
 
+function onInstall(e) {
+  onOpen(e);
+}
+
+function changeColorNameFor(mode : string) {
+  return "changeColorTo_" + mode;
+}
+function onOpen(e) {
+  let ui = SlidesApp.getUi();
+  let menu = ui.createAddonMenu();
+  menu.addItem("Colorize", "colorize");
+  let sub = ui.createMenu("Change Mode to");
+  for (let mode of theme.themer.getModeList()) {
+    // There is no way to pass a parameter from the menu to a function.
+    // We therefore dynamically create individual functions that can be used
+    // as targets. (See below for the actual creation of the functions.)
+    let funName = changeColorNameFor(mode);
+    sub.addItem(mode, funName);
+  }
+  menu.addSubMenu(sub);
+  menu.addToUi();
+}
+
 declare var codemirror;
 
 type Slide = slides.Slide;
@@ -35,7 +58,6 @@ for (let mode of theme.themer.getModeList()) {
   COLOR_TO_MODE.set(color.toLowerCase(), mode);
   COLOR_TO_MODE.set(color.toUpperCase(), mode);
   MODE_TO_STYLE.set(mode, segmentStyle);
-  /*
   // There is no way to pass a parameter from the menu to a function.
   // We therefore dynamically create individual functions that can be used
   // as targets.
@@ -43,10 +65,13 @@ for (let mode of theme.themer.getModeList()) {
   self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
   }
-  */
 }
 
-function main() {
+function changeColorTo(mode : string) {
+
+}
+
+function colorize() {
   let pres = SlidesApp.getActivePresentation();
   let slides = pres.getSlides();
   for (let slide of slides) {
@@ -67,7 +92,7 @@ function doSlide(slide) {
     if (codeShape.hasBackticks) {
       removeBackticksAndBox(codeShape);
     }
-    colorize(codeShape);
+    colorizeCodeShape(codeShape);
   }
   for (let shape of shapes) {
     if (codeSet.has(shape)) continue;
@@ -133,7 +158,7 @@ function removeBackticksAndBox(codeShape : CodeShape) {
   }
 }
 
-function colorize(codeShape : CodeShape) {
+function colorizeCodeShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
   let mode = codeShape.mode;
   let text = shape.getText()
