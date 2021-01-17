@@ -354,7 +354,7 @@ function boxSegments(segments : Array<CodeSegment>) {
       if (style.foreground) text.setForegroundColor(style.foreground);
       // Background is set on cell-level.
       if (style.bold) text.setBold(style.bold);
-      if (style.italic) text.setBold(style.italic);
+      if (style.italic) text.setItalic(style.italic);
       if (style.fontFamily) text.setFontFamily(style.fontFamily);
     }
   }
@@ -363,13 +363,7 @@ function boxSegments(segments : Array<CodeSegment>) {
 function applyCodeMirrorStyle(segmentStyle : theme.SegmentStyle, text : Text, start : number, token : string, cmStyle : string) {
   let style = segmentStyle.codeMirrorStyleToStyle(cmStyle);
   let endInclusive = start + token.length - 1;
-  // We are setting the values, even if they are undefined, to revert them
-  // to the default (in case they have been set before).
-  text.setItalic(start, endInclusive, style.italic);
-  text.setBold(start, endInclusive, style.bold);
-  text.setForegroundColor(start, endInclusive, style.foreground);
-  text.setBackgroundColor(start, endInclusive, style.background);
-  text.setFontFamily(start, endInclusive, style.fontFamily);
+  applyStyle(text, start, endInclusive, style);
 }
 
 function highlightSegments(segments : Array<CodeSegment>) {
@@ -498,19 +492,23 @@ function highlightCodeSpan(para : Paragraph, startTick : number, endTick : numbe
   let text = para.editAsText();
   let str = para.getText().substring(startTick + 1, endTick);
   let style = theme.themer.getCodeSpanStyle(str);
-  if (!style) {
-    // Shouldn't happen with the current theme, but we treat this
-    // as "don't change anything".
-    return;
-  }
-  text.setFontFamily(startTick, endTick, style.fontFamily);
-  text.setForegroundColor(startTick, endTick, style.foreground);
-  text.setBackgroundColor(startTick, endTick, style.background);
-  text.setBold(startTick, endTick, style.bold);
-  text.setItalic(startTick, endTick, style.italic);
+  applyStyle(text, startTick, endTick, style);
 
   // Delete the end-tick first, as removing the start-tick first, would change the
   // position of the end tick.
   text.deleteText(endTick, endTick);
   text.deleteText(startTick, startTick);
+}
+
+function applyStyle(text : docs.Text, start : number, endInclusive : number, style : theme.Style) {
+  if (!style) {
+    // Shouldn't happen with the current theme, but we treat this
+    // as "don't change anything".
+    return;
+  }
+  if (style.fontFamily) text.setFontFamily(start, endInclusive, style.fontFamily);
+  if (style.foreground) text.setForegroundColor(start, endInclusive, style.foreground);
+  if (style.background) text.setBackgroundColor(start, endInclusive, style.background);
+  if (style.bold !== undefined) text.setBold(start, endInclusive, style.bold);
+  if (style.italic !== undefined) text.setItalic(start, endInclusive, style.italic);
 }
