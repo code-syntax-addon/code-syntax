@@ -13,7 +13,7 @@ function onInstall(e) {
 }
 
 function changeColorNameFor(mode : string) {
-  return "changeColorTo" + mode;
+  return "changeColorTo_" + mode;
 }
 
 function onOpen(e) {
