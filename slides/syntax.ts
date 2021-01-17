@@ -94,16 +94,25 @@ for (let mode of theme.themer.getModeList()) {
 function changeColorTo(mode : string) {
   let selection = SlidesApp.getActivePresentation().getSelection();
   let elementRange = selection.getPageElementRange();
-  if (elementRange.getPageElements().length !== 1) return;
-  let element = elementRange.getPageElements()[0];
+  elementRange.getPageElements().forEach(function(pe) {
+     changeColorOfPageElement(pe, mode);
+  });
+}
+
+function changeColorOfPageElement(pageElement : PageElement, mode : string) {
   // TODO(florian): deal with groups?
-  if (element.getPageElementType() != SlidesApp.PageElementType.SHAPE) return;
-  let shape = element.asShape();
-  if (!isBoxedCodeShape(shape)) return;
-  let codeShape = CodeShape.fromBoxed(shape);
-  codeShape.mode = mode;
-  boxShape(codeShape);  // Applies the color.
-  colorizeCodeShape(codeShape);
+  if (pageElement.getPageElementType() == SlidesApp.PageElementType.SHAPE) {
+    let shape = pageElement.asShape();
+    if (!isBoxedCodeShape(shape)) return;
+    let codeShape = CodeShape.fromBoxed(shape);
+    codeShape.mode = mode;
+    boxShape(codeShape);  // Applies the color.
+    colorizeCodeShape(codeShape);
+  } else if (pageElement.getPageElementType() == SlidesApp.PageElementType.GROUP) {
+    pageElement.asGroup().getChildren().forEach(function(pe) {
+      changeColorOfPageElement(pe, mode);
+    });
+  }
 }
 
 function colorize() {
