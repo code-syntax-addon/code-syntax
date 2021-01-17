@@ -200,6 +200,7 @@ function colorizeSpans(shape : Shape) {
 }
 
 function applyStyle(range : TextRange, style : theme.Style) {
+  if (!style) return;
   let textStyle = range.getTextStyle();
   // We are setting the values, even if they are undefined, to revert them
   // to the default (in case they have been set before).
