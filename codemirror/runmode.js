@@ -8,7 +8,9 @@ function runMode(stringOrLines, modespec, callback, options) {
   var state = (options && options.state) || CodeMirror.startState(mode);
 
   for (var i = 0, e = lines.length; i < e; ++i) {
-    if (i) callback("\n", null);
+    if (i) {
+      callback("\n", null);
+    }
     var stream = new CodeMirror.StringStream(lines[i], null, {
       lookAhead : function(n) { return lines[i + n] },
       baseToken: function() {}
@@ -16,7 +18,9 @@ function runMode(stringOrLines, modespec, callback, options) {
     if (!stream.string && mode.blankLine) mode.blankLine(state);
     while (!stream.eol()) {
       var style = mode.token(stream, state);
-      callback(stream.current(), style, i, stream.start, state);
+      if (stream.current() !== "") {
+        callback(stream.current(), style);
+      }
       stream.start = stream.pos;
     }
   }

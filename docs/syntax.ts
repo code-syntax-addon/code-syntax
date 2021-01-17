@@ -361,7 +361,6 @@ function boxSegments(segments : Array<CodeSegment>) {
 }
 
 function applyCodeMirrorStyle(segmentStyle : theme.SegmentStyle, text : Text, start : number, token : string, cmStyle : string) {
-  if (token === "") return;
   let style = segmentStyle.codeMirrorStyleToStyle(cmStyle);
   let endInclusive = start + token.length - 1;
   // We are setting the values, even if they are undefined, to revert them
@@ -387,10 +386,10 @@ function highlightSegment(segment : CodeSegment) {
   let offset = 0;  // The offset within the paragraph.
   let segmentStyle = MODE_TO_STYLE.get(segment.mode);
   if (segmentStyle === undefined) return;  // This happens when the user wrote their own code segment.
-  codemirror.runMode(lines, segmentStyle.codeMirrorMode, function(token, style, lineNumber, start) {
+  codemirror.runMode(lines, segmentStyle.codeMirrorMode, function(token, style) {
     let current = paras[current_index];
     let str = current.getText();
-    if (offset == str.length) {
+    if (offset === str.length) {
       if (token != "\n" || style !== null) {
         throw "Unexpected token";
       }
