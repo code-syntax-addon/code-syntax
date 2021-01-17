@@ -39,18 +39,24 @@ type TextRange = slides.TextRange;
 class CodeShape {
   shape : Shape;
   mode : string;
-  hasBackticks : boolean;
 
-  constructor(shape : Shape, mode : string, hasBackticks : boolean) {
+  constructor(shape : Shape, mode : string) {
     this.shape = shape;
     this.mode = mode;
-    this.hasBackticks = hasBackticks;
   }
 
-  static fromBoxed(shape : Shape) : CodeShape{
+  static fromBoxed(shape : Shape) : CodeShape {
     let background = shape.getFill().getSolidFill();
     let mode = modeFromColor(background.getColor().asRgbColor().asHexString());
-    return new CodeShape(shape, mode, false);
+    return new CodeShape(shape, mode);
+  }
+
+  static fromText(shape : Shape) : CodeShape {
+    let str = shape.getText().asString();
+    let firstLine = str.substring(0, str.indexOf("\n"));
+    let mode = firstLine.substring(3).trim();  // Skip the triple-quotes.
+    if (mode === "") mode = "none";
+    return new CodeShape(shape, mode);
   }
 }
 
@@ -81,7 +87,7 @@ function changeColorTo(mode : string) {
   // TODO(florian): deal with groups?
   if (element.getPageElementType() != SlidesApp.PageElementType.SHAPE) return;
   let shape = element.asShape();
-  if (!isBoxedShape(shape)) return;
+  if (!isBoxedCodeShape(shape)) return;
   let codeShape = CodeShape.fromBoxed(shape);
   codeShape.mode = mode;
   boxShape(codeShape);  // Applies the color.
@@ -100,35 +106,29 @@ function doSlide(slide) {
   // It's important that we reuse the shapes we get from here, so that
   // the identity function works.
   let shapes = slide.getShapes();
-  let codeShapes = findCodeShapes(shapes);
-  let codeSet : Set<Shape> = new Set();
-  for (let codeShape of codeShapes) {
-    codeSet.add(codeShape.shape);
-    let mode = codeShape.mode;
-    if (!isValidMode(mode)) continue;
-    if (codeShape.hasBackticks) {
+  for (let shape of shapes) {
+    let codeShape : CodeShape;
+    if (isBoxedCodeShape(shape)) {
+      codeShape = CodeShape.fromBoxed(shape);
+      colorizeCodeShape(codeShape);
+    } else if (isTextCodeShape(shape)) {
+      codeShape = CodeShape.fromText(shape);
       // Box first, as this makes it easier to apply text styles.
       // GAS doesn't like it when there is no text.
       boxShape(codeShape);
       removeTripleBackticks(codeShape);
+      colorizeCodeShape(codeShape);
+    } else {
+      colorizeSpans(shape);
     }
-    colorizeCodeShape(codeShape);
   }
-  for (let shape of shapes) {
-    if (codeSet.has(shape)) continue;
-    colorizeSpans(shape);
-  }
-}
-
-function isValidMode(mode : string) : boolean {
-  return MODE_TO_STYLE.get(mode) !== undefined;
 }
 
 function modeFromColor(color : string) : string {
   return COLOR_TO_MODE.get(color) || "<unknown>";
 }
 
-function isBoxedShape(shape : Shape) : boolean {
+function isBoxedCodeShape(shape : Shape) : boolean {
   if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
   // If the text box has some background color we assume it's a
   // code shape. We will skip it, if it doesn't have a color we
@@ -136,25 +136,11 @@ function isBoxedShape(shape : Shape) : boolean {
   return shape.getFill().getSolidFill() && true;
 }
 
-function findCodeShapes(shapes : Array<Shape>) : Array<CodeShape> {
-  let result : Array<CodeShape> = [];
-  for (let shape of shapes) {
-    if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) continue;
-    if (isBoxedShape(shape)) {
-      // Already a boxed shape.
-      result.push(CodeShape.fromBoxed(shape));
-      continue;
-    }
-    let str = shape.getText().asString();
-    if (str.startsWith("```") &&
-        (str.endsWith("\n```") || str.endsWith("\n```\n"))) {
-      let firstLine = str.substring(0, str.indexOf("\n"));
-      let mode = firstLine.substring(3).trim();  // Skip the triple-quotes.
-      if (mode === "") mode = "none";
-      result.push(new CodeShape(shape, mode, true));
-    }
-  }
-  return result;
+function isTextCodeShape(shape : Shape) : boolean {
+  if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
+  let str = shape.getText().asString();
+  return str.startsWith("```") &&
+      (str.endsWith("\n```") || str.endsWith("\n```\n"));
 }
 
 function boxShape(codeShape : CodeShape) {
