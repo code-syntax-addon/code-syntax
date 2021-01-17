@@ -46,6 +46,12 @@ class CodeShape {
     this.mode = mode;
     this.hasBackticks = hasBackticks;
   }
+
+  static fromBoxed(shape : Shape) : CodeShape{
+    let background = shape.getFill().getSolidFill();
+    let mode = modeFromColor(background.getColor().asRgbColor().asHexString());
+    return new CodeShape(shape, mode, false);
+  }
 }
 
 const MODE_TO_STYLE : Map<string, theme.SegmentStyle> = new Map();
@@ -68,7 +74,18 @@ for (let mode of theme.themer.getModeList()) {
 }
 
 function changeColorTo(mode : string) {
-
+  let selection = SlidesApp.getActivePresentation().getSelection();
+  let elementRange = selection.getPageElementRange();
+  if (elementRange.getPageElements().length !== 1) return;
+  let element = elementRange.getPageElements()[0];
+  // TODO(florian): deal with groups?
+  if (element.getPageElementType() != SlidesApp.PageElementType.SHAPE) return;
+  let shape = element.asShape();
+  if (!isBoxedShape(shape)) return;
+  let codeShape = CodeShape.fromBoxed(shape);
+  codeShape.mode = mode;
+  boxShape(codeShape);  // Applies the color.
+  colorizeCodeShape(codeShape);
 }
 
 function colorize() {
@@ -90,7 +107,10 @@ function doSlide(slide) {
     let mode = codeShape.mode;
     if (!isValidMode(mode)) continue;
     if (codeShape.hasBackticks) {
-      removeBackticksAndBox(codeShape);
+      // Box first, as this makes it easier to apply text styles.
+      // GAS doesn't like it when there is no text.
+      boxShape(codeShape);
+      removeTripleBackticks(codeShape);
     }
     colorizeCodeShape(codeShape);
   }
@@ -108,17 +128,21 @@ function modeFromColor(color : string) : string {
   return COLOR_TO_MODE.get(color) || "<unknown>";
 }
 
+function isBoxedShape(shape : Shape) : boolean {
+  if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
+  // If the text box has some background color we assume it's a
+  // code shape. We will skip it, if it doesn't have a color we
+  // recognize.
+  return shape.getFill().getSolidFill() && true;
+}
+
 function findCodeShapes(shapes : Array<Shape>) : Array<CodeShape> {
   let result : Array<CodeShape> = [];
   for (let shape of shapes) {
     if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) continue;
-    let background = shape.getFill().getSolidFill();
-    if (background) {
-      // If the text box has some background color we assume it's a
-      // code shape. We will skip it, if it doesn't have a color we
-      // recognize.
-      let mode = modeFromColor(background.getColor().asRgbColor().asHexString());
-      result.push(new CodeShape(shape, mode, false));
+    if (isBoxedShape(shape)) {
+      // Already a boxed shape.
+      result.push(CodeShape.fromBoxed(shape));
       continue;
     }
     let str = shape.getText().asString();
@@ -133,11 +157,13 @@ function findCodeShapes(shapes : Array<Shape>) : Array<CodeShape> {
   return result;
 }
 
-function removeBackticksAndBox(codeShape : CodeShape) {
+function boxShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
-  let text = shape.getText();
   let style = MODE_TO_STYLE.get(codeShape.mode);
   shape.getFill().setSolidFill(style.background);
+
+  let text = shape.getText();
+  if (text.isEmpty()) return;
   let textStyle = text.getTextStyle();
   if (style.fontFamily) textStyle.setFontFamily(style.fontFamily);
   // TODO(florian): would be nice if we could get the default color from the
@@ -145,7 +171,11 @@ function removeBackticksAndBox(codeShape : CodeShape) {
   textStyle.setForegroundColor(style.foreground || "#000000");
   textStyle.setBold(style.bold || false);
   textStyle.setItalic(style.italic || false);
+}
 
+function removeTripleBackticks(codeShape : CodeShape) {
+  let shape = codeShape.shape;
+  let text = shape.getText();
   let str = text.asString();
   let endOfFirstLine = str.indexOf('\n');
   let startOfLastLine = str.lastIndexOf('\n```');
