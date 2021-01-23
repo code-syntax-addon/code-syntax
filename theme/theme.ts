@@ -103,11 +103,57 @@ const MODES = {
   "dart" : "#f7fff7",
   "shell": "#fff7f2",
   "go": "#f7ffff",
-  "python": "#f7f7ff",
+  "python": "#f3faff",
+  "yaml": "#f3fbfe",
+  "c": {
+    color: "#fffbf6",
+    cm: "text/x-csrc"
+  },
+  "c++": {
+    color: "#fffbf7",
+    cm: "text/x-c++src"
+  },
+  "js": {
+    color: "#f8f8ff",
+    cm: "text/javascript"
+  },
+  "ts": {
+    color: "#f8f8fe",
+    cm: "text/typescript"
+  },
+  "json": {
+    color: "#f2fbfe",
+    cm: "application/json"
+  },
   "java": {
     color: "#fffff7",
     cm: "text/x-java"
-  }
+  },
+  "kotlin": {
+    color: "#f3f9ff",
+    cm: "text/x-kotlin"
+  },
+  "c#": {
+    color: "#fffff6",
+    cm: "text/x-csharp"
+  },
+  "objective-c": {
+    color: "#f5f6ff",
+    cm: "text/x-objectivec"
+  },
+  "scala": {
+    color: "#fffff5",
+    cm: "text/x-scala"
+  },
+  "html": {
+    color: "#fffdf4",
+    cm: "text/html"
+  },
+  "xml": {
+    color: "#fffef4",
+    cm: "text/xml"
+  },
+  "dockerfile": "#fffef5",
 };
 
 const CODE_MIRROR_STYLES = {

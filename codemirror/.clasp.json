@@ -3,6 +3,7 @@
   "filePushOrder": [
     "codemirror_shim.js",
     "third_party/codemirror/lib/codemirror.js",
-    "third_party/codemirror/mode/clike/clike.js"
+    "third_party/codemirror/mode/clike/clike.js",
+    "third_party/codemirror/addon/mode/simple/simple.js"
   ]
 }
