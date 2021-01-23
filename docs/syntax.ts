@@ -13,6 +13,7 @@ function onInstall(e) {
 }
 
 function changeColorNameFor(mode : string) {
+  if (mode == "c++") mode = "cpp";
   return "changeColorTo_" + mode;
 }
 
