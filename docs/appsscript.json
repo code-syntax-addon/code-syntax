@@ -6,15 +6,15 @@
     "libraries": [
       {
         "userSymbol": "codemirror",
-        "version": "0",
+        "version": "1",
         "libraryId": "1vKz8xYpdvP9eOAw-C6SHOLX7s-yBPsuVqEJTlWR_c1Vv772lewlbxNrx",
-        "developmentMode": true
+        "developmentMode": false
       },
       {
         "userSymbol": "theme",
-        "version": "0",
+        "version": "1",
         "libraryId": "1PyJpoB7MqhvFw8Zjw2IT1koJ1tIf4DHdIrmGWuaKofoSr2ZYX0DOX73b",
-        "developmentMode": true
+        "developmentMode": false
       }
     ]
   }
