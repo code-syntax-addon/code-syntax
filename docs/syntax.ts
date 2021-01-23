@@ -349,6 +349,11 @@ function boxSegments(segments : Array<CodeSegment>) {
 
     let style = MODE_TO_STYLE.get(segment.mode);
     segment.cell.setBackgroundColor(style.background);
+    segment.cell.getParentTable().setBorderColor("#e0e0e0");
+    segment.cell.setPaddingTop(10);
+    segment.cell.setPaddingBottom(10);
+    segment.cell.setPaddingLeft(10);
+    segment.cell.setPaddingRight(10);
     for (let para of segment.paragraphs) {
       let text = para.editAsText();
       if (style.foreground) text.setForegroundColor(style.foreground);
