@@ -17,19 +17,26 @@ function changeColorNameFor(mode : string) {
   return "changeColorTo_" + mode;
 }
 
+function colorizeSelectionNameFor(mode : string) {
+  if (mode == "c++") mode = "cpp";
+  return "colorizeSelectionAs_" + mode;
+}
+
 function onOpen(e) {
   let ui = DocumentApp.getUi();
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
-  let sub = ui.createMenu("Change Mode to");
+  let subSelection = ui.createMenu("Colorize Selection as")
+  let subMode = ui.createMenu("Change Mode to");
   for (let mode of theme.themer.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
-    let funName = changeColorNameFor(mode);
-    sub.addItem(mode, funName);
+    subSelection.addItem(mode, colorizeSelectionNameFor(mode))
+    subMode.addItem(mode, changeColorNameFor(mode))
   }
-  menu.addSubMenu(sub);
+  menu.addSubMenu(subSelection);
+  menu.addSubMenu(subMode);
   menu.addToUi();
 }
 
@@ -44,6 +51,7 @@ type Element = docs.Element;
 type Table = docs.Table;
 type TableCell = docs.TableCell;
 type Text = docs.Text;
+type RangeElement = docs.RangeElement;
 
 const MODE_TO_STYLE : Map<string, theme.SegmentStyle> = new Map();
 const COLOR_TO_MODE : Map<string, string> = new Map();
@@ -61,6 +69,9 @@ for (let mode of theme.themer.getModeList()) {
   let self : any = this;
   self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
+  }
+  self[colorizeSelectionNameFor(mode)] = function() {
+    colorizeSelectionAs(mode);
   }
 }
 
@@ -107,6 +118,59 @@ function colorize() {
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
+}
+
+function colorizeSelectionAs(mode : string) {
+  let selection = DocumentApp.getActiveDocument().getSelection();
+  let rangeElements = selection.getRangeElements();
+  let lines : Array<string> = []
+  let texts : Array<Array<any>> = []
+
+  for (let rangeElement of rangeElements) {
+    let element = rangeElement.getElement();
+    let type = element.getType();
+    if (type == DocumentApp.ElementType.PARAGRAPH) {
+      element = element.asParagraph().editAsText()
+      type = DocumentApp.ElementType.TEXT;
+    }
+    if (type == DocumentApp.ElementType.TEXT) {
+      let text = element.asText();
+      let content : string;
+      let from : number;
+      let length : number;
+      if (rangeElement.isPartial()) {
+        from = rangeElement.getStartOffset();
+        length = rangeElement.getEndOffsetInclusive() + 1 - from
+        content = text.getText().substring(from, from + length);
+      } else {
+        from = 0
+        content = text.getText();
+        length = content.length;
+      }
+      let elementLines = content.split("\r");
+      let offset = from;
+      for (let line of elementLines) {
+        lines.push(line);
+        texts.push([text, offset]);
+        offset += line.length + 1;
+      }
+    }
+  }
+  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
+  let lineIndex = 0;
+  let lineOffset = 0;
+  codemirror.runMode(lines, codeMirrorStyle.codeMirrorMode, function(token, style) {
+    if (token == "\n") {
+      lineIndex++;
+      lineOffset = 0;
+      return;
+    }
+    let current = texts[lineIndex];
+    let text = current[0];
+    let offset = current[1];
+    applyCodeMirrorStyle(codeMirrorStyle, text, offset + lineOffset, token, style)
+    lineOffset += token.length;
+  });
 }
 
 let defaultWidth = null;
