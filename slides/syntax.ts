@@ -189,6 +189,7 @@ function doShape(shape : Shape) {
     colorizeCodeShape(codeShape);
   } else if (isTextCodeShape(shape)) {
     codeShape = CodeShape.fromText(shape);
+    if (!MODE_TO_STYLE.has(codeShape.mode)) return
     // Box first, as this makes it easier to apply text styles.
     // GAS doesn't like it when there is no text.
     boxShape(codeShape);
