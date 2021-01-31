@@ -5,6 +5,10 @@
 
 import "google-apps-script";
 import * as theme from "../theme/theme";
+declare var codemirror;
+
+// If another 3rd party library is used, concatenate the license here.
+var thirdPartyLicenses = "CodeMirror" + codemirror.license;
 
 import docs = GoogleAppsScript.Document;
 
@@ -40,11 +44,17 @@ function onOpen(e) {
   }
   menu.addSubMenu(subSelection);
   menu.addSubMenu(subMode);
+  menu.addItem("License", "showLicense");
   menu.addToUi();
 }
 
-
-declare var codemirror;
+function showLicense() {
+  let str = "This project is made possible by open source software:\n"
+  str += "\n"
+  str += thirdPartyLicenses
+  let ui = DocumentApp.getUi();
+  ui.alert(str);
+}
 
 type Document = docs.Document;
 type Body = docs.Body;

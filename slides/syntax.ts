@@ -4,8 +4,13 @@
 // Copyright (C) 2021 Florian Loitsch. All rights reserved.
 
 import "google-apps-script";
-import slides = GoogleAppsScript.Slides;
 import * as theme from "../theme/theme";
+declare var codemirror;
+
+// If another 3rd party library is used, concatenate the license here.
+var thirdPartyLicenses = "CodeMirror: " + codemirror.license;
+
+import slides = GoogleAppsScript.Slides;
 
 function onInstall(e) {
   onOpen(e);
@@ -40,10 +45,17 @@ function onOpen(e) {
   }
   menu.addSubMenu(subSelection);
   menu.addSubMenu(subMode);
+  menu.addItem("License", "showLicense")
   menu.addToUi();
 }
 
-declare var codemirror;
+function showLicense() {
+  let str = "This project is made possible by open source software:\n";
+  str += "\n";
+  str += thirdPartyLicenses;
+  let ui = SlidesApp.getUi();
+  ui.alert(str);
+}
 
 type Slide = slides.Slide;
 type Shape = slides.Shape;
