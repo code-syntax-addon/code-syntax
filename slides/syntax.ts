@@ -11,9 +11,15 @@ function onInstall(e) {
   onOpen(e);
 }
 
-function changeColorNameFor(mode : string) {
-  return "changeColorTo_" + mode;
+function modeToValidIdentifier(mode : string) : string {
+  if (mode == "c++") return "cpp";
+  if (mode == "c#") return "c_sharp"
+  return mode.replace(/[^a-zA-Z]/g, "_")
 }
+function changeColorNameFor(mode : string) : string {
+  return "changeColorTo_" + modeToValidIdentifier(mode);
+}
+
 function onOpen(e) {
   let ui = SlidesApp.getUi();
   let menu = ui.createAddonMenu();

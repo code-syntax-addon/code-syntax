@@ -12,14 +12,17 @@ function onInstall(e) {
   onOpen(e);
 }
 
-function changeColorNameFor(mode : string) {
-  if (mode == "c++") mode = "cpp";
-  return "changeColorTo_" + mode;
+function modeToValidIdentifier(mode : string) : string {
+  if (mode == "c++") return "cpp";
+  if (mode == "c#") return "c_sharp"
+  return mode.replace(/[^a-zA-Z]/g, "_")
+}
+function changeColorNameFor(mode : string) : string {
+  return "changeColorTo_" + modeToValidIdentifier(mode);
 }
 
-function colorizeSelectionNameFor(mode : string) {
-  if (mode == "c++") mode = "cpp";
-  return "colorizeSelectionAs_" + mode;
+function colorizeSelectionNameFor(mode : string) : string{
+  return "colorizeSelectionAs_" + modeToValidIdentifier(mode);
 }
 
 function onOpen(e) {
@@ -129,7 +132,10 @@ function colorizeSelectionAs(mode : string) {
   for (let rangeElement of rangeElements) {
     let element = rangeElement.getElement();
     let type = element.getType();
-    if (type == DocumentApp.ElementType.PARAGRAPH) {
+    if (type == DocumentApp.ElementType.LIST_ITEM) {
+      element = element.asListItem().editAsText();
+      type = DocumentApp.ElementType.TEXT;
+    } else if (type == DocumentApp.ElementType.PARAGRAPH) {
       element = element.asParagraph().editAsText()
       type = DocumentApp.ElementType.TEXT;
     }
