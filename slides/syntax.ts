@@ -20,20 +20,26 @@ function changeColorNameFor(mode : string) : string {
   return "changeColorTo_" + modeToValidIdentifier(mode);
 }
 
+function colorizeSelectionNameFor(mode : string) : string{
+  return "colorizeSelectionAs_" + modeToValidIdentifier(mode);
+}
+
 function onOpen(e) {
   let ui = SlidesApp.getUi();
   let menu = ui.createAddonMenu();
   menu.addItem("Colorize", "colorize");
   menu.addItem("Colorize Slide", "colorizeSlide");
-  let sub = ui.createMenu("Change Mode to");
+  let subSelection = ui.createMenu("Colorize Selection as")
+  let subMode = ui.createMenu("Change Mode to");
   for (let mode of theme.themer.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
-    let funName = changeColorNameFor(mode);
-    sub.addItem(mode, funName);
+    subSelection.addItem(mode, colorizeSelectionNameFor(mode))
+    subMode.addItem(mode, changeColorNameFor(mode))
   }
-  menu.addSubMenu(sub);
+  menu.addSubMenu(subSelection);
+  menu.addSubMenu(subMode);
   menu.addToUi();
 }
 
@@ -95,6 +101,9 @@ for (let mode of theme.themer.getModeList()) {
   self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
   }
+  self[colorizeSelectionNameFor(mode)] = function() {
+    colorizeSelectionAs(mode);
+  }
 }
 
 function changeColorTo(mode : string) {
@@ -103,6 +112,13 @@ function changeColorTo(mode : string) {
   elementRange.getPageElements().forEach(function(pe) {
      changeColorOfPageElement(pe, mode);
   });
+}
+
+function colorizeSelectionAs(mode : string) {
+  let selection = SlidesApp.getActivePresentation().getSelection();
+  let textRange = selection.getTextRange();
+  if (!textRange) return;
+  colorizeText(textRange, mode)
 }
 
 function changeColorOfPageElement(pageElement : PageElement, mode : string) {
@@ -219,6 +235,10 @@ function colorizeCodeShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
   let mode = codeShape.mode;
   let text = shape.getText()
+  colorizeText(text, mode)
+}
+
+function colorizeText(text : TextRange, mode : string) {
   let str = text.asString();
   let codeMirrorStyle = MODE_TO_STYLE.get(mode);
   let offset = 0;
