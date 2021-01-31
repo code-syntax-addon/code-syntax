@@ -129,6 +129,8 @@ function colorizeSelectionAs(mode : string) {
   let lines : Array<string> = []
   let texts : Array<Array<any>> = []
 
+  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
+
   for (let rangeElement of rangeElements) {
     let element = rangeElement.getElement();
     let type = element.getType();
@@ -153,6 +155,13 @@ function colorizeSelectionAs(mode : string) {
         content = text.getText();
         length = content.length;
       }
+      if (length == 0) continue;
+
+      if (codeMirrorStyle.fontFamily) {
+        text.setFontFamily(from, from + length - 1, codeMirrorStyle.fontFamily)
+      }
+      text.setBold(from, from + length - 1, codeMirrorStyle.bold || false)
+      text.setItalic(from, from + length - 1, codeMirrorStyle.italic || false)
       let elementLines = content.split("\r");
       let offset = from;
       for (let line of elementLines) {
@@ -162,7 +171,6 @@ function colorizeSelectionAs(mode : string) {
       }
     }
   }
-  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
   let lineIndex = 0;
   let lineOffset = 0;
   codemirror.runMode(lines, codeMirrorStyle.codeMirrorMode, function(token, style) {
