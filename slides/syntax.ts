@@ -116,9 +116,15 @@ function changeColorTo(mode : string) {
 
 function colorizeSelectionAs(mode : string) {
   let selection = SlidesApp.getActivePresentation().getSelection();
-  let textRange = selection.getTextRange();
-  if (!textRange) return;
-  colorizeText(textRange, mode)
+  let text = selection.getTextRange();
+  if (!text) return;
+  if (text.isEmpty()) return;
+  let textStyle = text.getTextStyle();
+  let style = MODE_TO_STYLE.get(mode)
+  if (style.fontFamily) textStyle.setFontFamily(style.fontFamily);
+  textStyle.setBold(style.bold || false);
+  textStyle.setItalic(style.italic || false);
+  colorizeText(text, mode)
 }
 
 function changeColorOfPageElement(pageElement : PageElement, mode : string) {
@@ -240,6 +246,7 @@ function colorizeCodeShape(codeShape : CodeShape) {
 
 function colorizeText(text : TextRange, mode : string) {
   let str = text.asString();
+  str = str.replace(/\x0B/g, "\n")
   let codeMirrorStyle = MODE_TO_STYLE.get(mode);
   let offset = 0;
   codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token, tokenStyle) {
