@@ -32,24 +32,27 @@ The script id is stored in .clasp.json.
 Note: we now depend on codemirror library, and a theme library.
 The dependencies are written into the appsscript.json.
 
-## Limitations of GAS
-- There is no nice way to change the background color of a paragraph [back].
-- One can use the `batchUpdate` calls [batch0][batch1][batch2] to change
-  the paragraphs, but that comes with two severe annoyances:
-  * the script needs more permissions. (There is no way to get API permissions
-    for just the one document).
-  * UNDO doesn't work for API calls.
-- There is no way to change the indentation of a table. (I ended up moving the
-  code segments into another "hidden" table when they needed to be indented).
-Notes:
+## Limitations of Google Apps Script
+GAS comes with some limitations which guided the design of this add-on.
 
-Changed from doing RPC calls to creating a table (box) around code segments.
-Even there, the GAS API is missing calls: no way to indent the table.
-So we are storing indented code segments in another table.
+### Paragraph Background
+There is no nice way to change the background color of a paragraph using "normal"
+GAS (see the [back](reference)). One can use the `batchUpdate` calls (see [batch0](reference), [batch1](stackoverflow question), and [batch2](another stackoverflow
+question)) to change the paragraphs, but that comes with two severe annoyances:
+* the script needs more permissions. (There is no way to get API permissions
+  for just the one document).
+* UNDO doesn't work for API calls.
 
+As a consequence we wrap code segments into a table.
 
 [back]: https://developers.google.com/apps-script/reference/document/attribute
 
 [batch0]: https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
 [batch1]: https://stackoverflow.com/a/60423698
 [batch2]: https://stackoverflow.com/questions/60432342
+
+### Table Indentation
+There is no way to change the indentation of a table.
+
+As a consequence we move code segments that should be indented into another
+"hidden" table where the first invisible column gives some indentation.
