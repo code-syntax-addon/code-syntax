@@ -2,19 +2,19 @@
 This add-on provides support for code segments and code spans.
 
 Similarly to markdown code segments are delimited with triple back-ticks and code spans with single back-ticks:
+~~~
 ```
-  ```
-  A code segment.
-  ```
-  And a `code` span.
+A code segment.
 ```
+And a `code` span.
+~~~
 
 Additionally, the add-on changes `# Heading` lines to their corresponding
 Google Docs headings.
 
 ## Examples
-| Before |  After |
-:--------:--------:
+Before | After
+------ | -----
 ![Before 1](screens/syntax1.png) | ![After 1](screens/syntax2.png)
 ![Before 2](screens/syntax3.png) | ![After 2](screens/syntax4.png)
 
