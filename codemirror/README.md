@@ -1,6 +1,6 @@
 # codemirror_gas
 
-Google Apps Script (GAS) version of CodeMirror.
+Google Apps Script (GAS) version of [https://codemirror.net/](CodeMirror).
 The resulting library can be used by GAS scripts to syntax highlight code.
 
 # Notes:
