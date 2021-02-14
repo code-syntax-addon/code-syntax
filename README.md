@@ -10,8 +10,12 @@ Before | After
 ## Google Slides Examples
 Before | After
 ------ | -----
-![Before 1](docs/screens/screen1.png) | ![After 1](docs/screens/screen2.png)
-![Before 2](docs/screens/screen3.png) | ![After 2](docs/screens/screen4.png)
+![Before 1](slides/screens/screen1.png) | ![After 1](slides/screens/screen2.png)
+![Before 2](slides/screens/screen3.png) | ![After 2](slides/screens/screen4.png)
+
+## Kodify
+This add-on was inspired by "Kodify", a google-docs extension that was
+available at Google (go/kodify).
 
 ## License
 All code is licensed MIT.
