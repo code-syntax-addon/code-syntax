@@ -14,8 +14,8 @@ Code segments mast be in their own text boxes.
 ## Examples
 Before | After
 ------ | -----
-![Before 1](screens/syntax1.png) | ![After 1](screens/syntax2.png)
-![Before 2](screens/syntax3.png) | ![After 2](screens/syntax4.png)
+![Before 1](screens/screen1.png) | ![After 1](screens/screen2.png)
+![Before 2](screens/screen3.png) | ![After 2](screens/screen4.png)
 
 ## Compilation/Upload
 Use `clasp` to compile and upload.
