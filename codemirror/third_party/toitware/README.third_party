@@ -1,0 +1,6 @@
+Name: Toit Syntax Mode
+Date: 2021-02-14
+License: MIT
+
+Description:
+A CodeMirror mode for the Toit programming language.

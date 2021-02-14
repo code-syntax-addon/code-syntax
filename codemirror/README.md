@@ -16,10 +16,3 @@ clasp push
 ```
 
 The script is supposed to be used as library from other scripts.
-
-# Remainders
-Still need to publish the first version.
-
-# TODO:
-* add more modes. (As long as the dependencies are simple, quite easy).
-* toitware is missing third_party README.
