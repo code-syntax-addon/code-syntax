@@ -1,0 +1,13 @@
+# Deploy
+
+Use clasp to upload:
+
+```
+clasp login
+clasp status
+clasp push
+```
+
+Create a new version with `clasp version [description]`.
+
+Deploy it with `clasp deploy [version] [description]`.

@@ -1,8 +1,13 @@
-// CodeMirror, copyright (c) by Toitware ApS.
-// Distributed under an MIT license: https://codemirror.net/LICENSE
+// Copyright (C) 2021 Toitware ApS. All rights reserved.
+// Use of this source code is governed by an MIT-style license that can be
+// found in the LICENSE file.
 
 (function (mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
+  if (typeof window === "undefined" || typeof window.navigator == 'undefined')
+    import("codemirror").then(mod);
+  else if ( typeof module == "object" && module.hot)
+    import("codemirror").then(mod);
+  else if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror"));
   else if (typeof define == "function" && define.amd) // AMD
     define(["codemirror"], mod);
@@ -40,7 +45,7 @@
 
     var IDENTIFIER = /[a-zA-Z_]\w*/;
     var TYPE = /[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)?/;
-    var OVERRIDABLE_OPERATOR = /==|>=|<=|<<|>>>|>>|\*|\+|-|%|\/|<|>|&|\||\^|~|\[\]\=|\[\]/
+    var OVERRIDABLE_OPERATOR = /==|>=|<=|<<|>>>|>>|\*|\+|-|%|\/|<|>|&|\||\^|~|\[\]\=|\[\]|\[\.\.\]/
 
     var CONSTANT_HEURISTIC = /_?[A-Z][A-Z_0-9]+/;
     var TYPE_HEURISTIC = /_?[A-Z]\w*[a-z]\w*/;
@@ -122,6 +127,10 @@
       while (true) {
         var peek = stream.peek();
         if (!peek || peek == ' ') return "enclosed";
+        if (closing == "]" && stream.match("..")) {
+          // We assume it's the slice operator.
+          return "op_slice";
+        }
         var next = stream.next();
         if (next == closing) {
           state.context.pop();
@@ -132,12 +141,17 @@
             case "]": return "bracket";
           }
           return "error";
+        } else if (next == ',') {
+          if (closing == ")") return "error";
+          return "separator";
+        } else {
+          return "error";
         }
       }
     }
 
     function tryDelimited(stream, state) {
-      if (stream.match(/[({[]/)) {
+      if (stream.match(/[({[]|#[[]/)) {
         state.context.push([tokenizeDelimited, -1]);
         // Abusing `subState` to store the delimiter.
         var closing;
@@ -146,6 +160,7 @@
           case "(": closing = ")"; style = "paren"; break;
           case "{": closing = "}"; style = "brace"; break;
           case "[": closing = "]"; style = "bracket"; break;
+          case "#[": closing = "]"; style = "bracket"; break;
         }
         state.subState.push(closing);
         return style;
@@ -268,7 +283,10 @@
         stream.eatWhile(/[^"$\\]/);
         if (stream.eol()) return "unfinished_string";
         // TODO: we could highlight escapes. (Especially \x and \u).
-        if (stream.match("\\")) stream.next();  // Consume the escaped character.
+        if (stream.match("\\")) {
+          stream.next();  // Consume the escaped character.
+          continue;
+        }
         if (stream.peek() == '$') {
           setSubState(state, STRING_ESCAPE_DOLLAR);
           return "singleline_string";
@@ -380,11 +398,24 @@
       return null;
     }
 
-    function tryIdentifier(stream, state) {
+    function tryPostfixMemberOrIdentifier(stream, state) {
+      return tryIdentifier(stream, state, true);
+    }
+
+    function tryIdentifier(stream, state, allowPrefixedDot) {
+      // If we allow a prefixed dot, consume it (but put it back if
+      // it's not followed by an identifier).
+      if (allowPrefixedDot && stream.match(".")) {
+        if (!stream.match(IDENTIFIER, false)) {
+          stream.backUp(1);
+          return null;
+        }
+        return "dot";
+      }
       if (!stream.match(IDENTIFIER)) return null;
       var id = stream.current();
       if (isKeyword(id)) return "keyword";
-      if (isSpecialVar(id)) return "special_var"
+      if (isSpecialVar(id)) return "special_var";
       if (isAtom(id)) return "atom";
       if (id.match(CONSTANT_HEURISTIC)) {
         return "constant";
@@ -867,6 +898,19 @@
       return null;
     }
 
+    // For code snippets that have an indent on the very first
+    // line we assume that we are implicitly inside a function
+    // like "main".
+    function tryImpliedTopLevelFunction(stream, state) {
+      if (state.startOfLine && stream.indentation() == 2) {
+        state.context.push([tokenizeFunctionBody, 2]);
+        state.subState.push(null);
+        return "null";
+      }
+      return null;
+    }
+
+
     function tokenizeError(stream, state) {
       // We could try to be more aggressive (like trying to highlight numbers,
       // strings, ...), but the most important thing is that we make progress.
@@ -882,6 +926,10 @@
         tryOperator(stream, state) ||
         tryString(stream, state) ||
         tryIsAs(stream, state) ||
+        // In theory we need to check whether the postfix member is
+        // prefixed by another expression but for the syntax highlighter we
+        // just assume that was the case.
+        tryPostfixMemberOrIdentifier(stream, state) ||
         tryIdentifier(stream, state) ||
         tryPrimitive(stream, state) ||
         tryDelimited(stream, state) ||
@@ -893,6 +941,7 @@
         tryImport(stream, state) ||
         tryExport(stream, state) ||
         tryClass(stream, state) ||
+        tryImpliedTopLevelFunction(stream, state) ||
         tryToplevelDeclaration(stream, state) ||
         tokenizeError(stream, state);
     }
@@ -998,7 +1047,8 @@
           case "toplevel_name":
           case "toplevel_name_setter":
           case "class_name":
-            result = "def";
+          case "member_operator_name":
+              result = "def";
             break;
 
           case "import_show_identifier":
@@ -1033,9 +1083,10 @@
           case "relational":
           case "op_assig":
           case "overridable_op":
+          case "op_slice":
           case "assig":
           case "define":
-          case "member_operator_name":
+          case "separator":
             result = "operator";
             break;
 

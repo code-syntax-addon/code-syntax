@@ -15,4 +15,8 @@ clasp status
 clasp push
 ```
 
+Create a new version with `clasp version [description]`.
+
+Deploy it with `clasp deploy [version] [description]`.
+
 The script is supposed to be used as library from other scripts.
