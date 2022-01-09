@@ -37,19 +37,17 @@ GAS comes with some limitations which guided the design of this add-on.
 
 ### Paragraph Background
 There is no nice way to change the background color of a paragraph using "normal"
-GAS (see the [back](reference)). One can use the `batchUpdate` calls (see [batch0](reference), [batch1](stackoverflow question), and [batch2](another stackoverflow
-question)) to change the paragraphs, but that comes with two severe annoyances:
+GAS (see the [reference](https://developers.google.com/apps-script/reference/document/attribute)). One
+can use the `batchUpdate` calls (see
+[reference](https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate),
+[stackoverflow question](https://stackoverflow.com/a/60423698), and [another stackoverflow
+question](https://stackoverflow.com/questions/60432342)) to change the paragraphs, but that comes
+with two severe annoyances:
 * the script needs more permissions. (There is no way to get API permissions
   for just the one document).
 * UNDO doesn't work for API calls.
 
 As a consequence we wrap code segments into a table.
-
-[back]: https://developers.google.com/apps-script/reference/document/attribute
-
-[batch0]: https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
-[batch1]: https://stackoverflow.com/a/60423698
-[batch2]: https://stackoverflow.com/questions/60432342
 
 ### Table Indentation
 There is no way to change the indentation of a table.
