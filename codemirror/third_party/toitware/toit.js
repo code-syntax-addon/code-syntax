@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 (function (mod) {
+  if (typeof CodeMirror !== "undefined")  // Just use the variable if it already exits.
+    mod(CodeMirror);
   if (typeof window === "undefined" || typeof window.navigator == 'undefined')
     import("codemirror").then(mod);
   else if ( typeof module == "object" && module.hot)
