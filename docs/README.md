@@ -12,6 +12,10 @@ And a `code` span.
 Additionally, the add-on changes `# Heading` lines to their corresponding
 Google Docs headings.
 
+## Installation
+The add-on is published on the Google Workspace Marketplace, and can be
+installed from [there](https://workspace.google.com/marketplace/app/code_syntax/827674971433).
+
 ## Examples
 Before | After
 ------ | -----
