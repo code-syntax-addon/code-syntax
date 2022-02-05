@@ -1,6 +1,10 @@
 # Google Docs/Slides Add-On for Syntax Highlighting
 Add-ons for Google Docs and Slides to highlight code segments and code spans.
 
+## Installation
+The add-on is published on the Google Workspace Marketplace, and can be
+installed from [there](https://workspace.google.com/marketplace/app/code_syntax/827674971433).
+
 ## Google Docs Examples
 Before | After
 ------ | -----
