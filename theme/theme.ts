@@ -113,9 +113,17 @@ const MODES = {
     color: "#fffbf7",
     cm: "text/x-c++src"
   },
+  "css": {
+    color: "#fffdf5",
+    cm: "text/x-c++src"
+  },
   "js": {
     color: "#f8f8ff",
     cm: "text/javascript"
+  },
+  "jsx": {
+    color: "#f8f9ff",
+    cm: "text/jsx"
   },
   "ts": {
     color: "#f8f8fe",
