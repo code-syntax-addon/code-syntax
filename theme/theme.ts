@@ -115,7 +115,7 @@ const MODES = {
   },
   "css": {
     color: "#fffdf5",
-    cm: "text/x-c++src"
+    cm: "text/x-gss"
   },
   "js": {
     color: "#f8f8ff",
