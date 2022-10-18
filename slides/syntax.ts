@@ -215,8 +215,13 @@ function isBoxedCodeShape(shape : Shape) : boolean {
 function isTextCodeShape(shape : Shape) : boolean {
   if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
   let str = shape.getText().asString();
-  return str.startsWith("```") &&
-      (str.endsWith("\n```") || str.endsWith("\n```\n"));
+  if (!str.startsWith("```")) return false;
+  let lastTicks = str.lastIndexOf('\n```');
+  if (lastTicks == -1) return false;
+  for (let i = lastTicks + 4; i < str.length; i++) {
+    if (str.charAt(i) != ' ' && str.charAt(i) != '\n') return false;
+  }
+  return true;
 }
 
 function boxShape(codeShape : CodeShape) {

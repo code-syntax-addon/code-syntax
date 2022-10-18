@@ -6,7 +6,7 @@ export {
   SegmentStyle,
   Style,
   Themer,
-}
+};
 
 class Style {
   fontFamily : string;
@@ -28,6 +28,9 @@ class SegmentStyle extends Style {
 
   public codeMirrorStyleToStyle(cmStyle : string) : Style  {
     let result = new Style;
+    result.foreground = "#000000";
+    result.italic = false;
+    result.bold = false;
     if (cmStyle === undefined || cmStyle === null) return result;
     if (!(cmStyle in CODE_MIRROR_STYLES)) {
       console.log("Missing style for " + cmStyle);

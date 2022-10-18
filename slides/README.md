@@ -18,7 +18,7 @@ Before | After
 ![Before 2](screens/screen3.png) | ![After 2](screens/screen4.png)
 
 ## Compilation/Upload
-Use `clasp` to compile and upload.
+Use `clasp` (`gclasp` on Archlinux) to compile and upload.
 
 ```
 clasp login

@@ -19,7 +19,7 @@ Before | After
 ![Before 2](screens/syntax3.png) | ![After 2](screens/syntax4.png)
 
 ## Compilation/Upload
-Use `clasp` to compile and upload.
+Use `clasp` (`gclasp` on Archlinux) to compile and upload.
 
 ```
 clasp login

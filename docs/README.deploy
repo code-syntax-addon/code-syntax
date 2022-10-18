@@ -1,6 +1,6 @@
 # Deploy
 
-Use clasp to upload:
+Use clasp (`gclasp` on Archlinux) to upload:
 
 ```
 clasp login
