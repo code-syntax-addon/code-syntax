@@ -1,21 +1,24 @@
 {
   "timeZone": "Europe/Copenhagen",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
   "dependencies": {
     "libraries": [
       {
         "userSymbol": "codemirror",
-        "version": "5",
+        "version": "6",
         "libraryId": "1vKz8xYpdvP9eOAw-C6SHOLX7s-yBPsuVqEJTlWR_c1Vv772lewlbxNrx",
-        "developmentMode": true
+        "developmentMode": false
       },
       {
         "userSymbol": "theme",
-        "version": "5",
+        "version": "6",
         "libraryId": "1PyJpoB7MqhvFw8Zjw2IT1koJ1tIf4DHdIrmGWuaKofoSr2ZYX0DOX73b",
-        "developmentMode": true
+        "developmentMode": false
       }
     ]
   },
-  "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/presentations.currentonly"
+  ]
 }
