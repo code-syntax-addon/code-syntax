@@ -13,6 +13,7 @@ installed from [there](https://workspace.google.com/marketplace/app/code_syntax/
 |![Before 2](screens/doc3.png) | ![After 2](screens/doc4.png)|
 
 ## Google Slides Examples
+
 |Before | After|
 |------ | -----|
 |![Before 1](screens/slide1.png) | ![After 1](screens/slide2.png)|
