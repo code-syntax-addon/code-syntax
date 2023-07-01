@@ -1,9 +1,3 @@
-<style>
-.tablelines table, .tablelines td, .tablelines th {
-        border: 1px solid black;
-        }
-</style>
-
 # Google Docs/Slides Add-On for Syntax Highlighting
 Add-ons for Google Docs and Slides to highlight code segments and code spans.
 
@@ -12,18 +6,17 @@ The add-on is published on the Google Workspace Marketplace, and can be
 installed from [there](https://workspace.google.com/marketplace/app/code_syntax/827674971433).
 
 ## Google Docs Examples
-Before | After
------- | -----
-![Before 1](screens/doc1.png) | ![After 1](screens/doc2.png)
-![Before 2](screens/doc3.png) | ![After 2](screens/doc4.png)
-{: .tablelines}
+
+|Before | After|
+|------ | -----|
+|![Before 1](screens/doc1.png) | ![After 1](screens/doc2.png)|
+|![Before 2](screens/doc3.png) | ![After 2](screens/doc4.png)|
 
 ## Google Slides Examples
-Before | After
------- | -----
-![Before 1](screens/slide1.png) | ![After 1](screens/slide2.png)
-![Before 2](screens/slide3.png) | ![After 2](screens/slide4.png)
-{: .tablelines}
+|Before | After|
+|------ | -----|
+|![Before 1](screens/slide1.png) | ![After 1](screens/slide2.png)|
+|![Before 2](screens/slide3.png) | ![After 2](screens/slide4.png)|
 
 ## Kodify
 This add-on was inspired by "Kodify", a google-docs extension that was
