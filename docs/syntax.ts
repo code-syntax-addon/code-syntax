@@ -89,7 +89,22 @@ for (let mode of theme.themer.getModeList()) {
 }
 
 function changeColorTo(mode : string) {
-  let element = DocumentApp.getActiveDocument().getCursor().getElement();
+  const cursor = DocumentApp.getActiveDocument().getCursor();
+  let element: Element | null = null;
+  if (cursor != null) {
+    element = cursor.getElement();
+  } else {
+    const selection = DocumentApp.getActiveDocument().getSelection();
+    if (selection != null) {
+      const rangeElements = selection.getRangeElements();
+      if (rangeElements.length == 1) {
+        element = rangeElements[0].getElement();
+      }
+    }
+  }
+  if (element == null) {
+    return;
+  }
   while (element && element.getType() !== DocumentApp.ElementType.TABLE) {
     element = element.getParent();
   }
@@ -135,6 +150,7 @@ function colorize() {
 
 function colorizeSelectionAs(mode : string) {
   let selection = DocumentApp.getActiveDocument().getSelection();
+  if (selection == null) return;
   let rangeElements = selection.getRangeElements();
   let lines : Array<string> = []
   let texts : Array<Array<any>> = []
@@ -252,7 +268,7 @@ function findCodeSegmentsInTable(table : Table) : Array<CodeSegment> {
 function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
   let result : Array<CodeSegment> = []
   let inCodeSegment = false;
-  let accumulated : Array<Paragraph> = [];
+  let accumulated : Array<Paragraph> | null = [];
   let currentMode = "";
 
   function startCodeSegment(mode : string) {
@@ -262,7 +278,15 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
   }
 
   function finishCodeSegment() {
-    result.push(new CodeSegment(accumulated, currentMode));
+    result.push(new CodeSegment(accumulated!, currentMode));
+    inCodeSegment = false;
+    accumulated = null;
+  }
+
+  function abortCodeSegment() {
+    // Unfinished/aborted code segments are closed, but not modified.
+    // By setting an unknown mode, we won't touch it.
+    result.push(new CodeSegment(accumulated!, "<aborted>"));
     inCodeSegment = false;
     accumulated = null;
   }
@@ -270,7 +294,7 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
   for (let i = 0; i < container.getNumChildren(); i++) {
     let element = container.getChild(i);
     if (inCodeSegment && element.getType() != DocumentApp.ElementType.PARAGRAPH) {
-      finishCodeSegment();
+      abortCodeSegment();
     }
     if (element.getType() == DocumentApp.ElementType.TABLE) {
       let table = element.asTable();
@@ -306,10 +330,7 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
     }
   }
   if (inCodeSegment) {
-    // Unfinished code segments are closed, but not modified.
-    // By setting a mode we don't know, we won't touch it.
-    currentMode = "<unfinished>";
-    finishCodeSegment();
+    abortCodeSegment();
   }
   return result;
 }

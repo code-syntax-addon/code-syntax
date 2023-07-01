@@ -206,10 +206,15 @@ function modeFromColor(color : string) : string {
 
 function isBoxedCodeShape(shape : Shape) : boolean {
   if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
-  // If the text box has some background color we assume it's a
-  // code shape. We will skip it, if it doesn't have a color we
-  // recognize.
-  return shape.getFill().getSolidFill() && true;
+  const fill = shape.getFill().getSolidFill();
+  if (!fill) return false;
+  // Could be a template color.
+  const color = fill.getColor();
+  if (color.getColorType() != SlidesApp.ColorType.RGB) return false;
+  const rgbColor = color.asRgbColor();
+  if (!rgbColor) return false;
+  const hexColor = rgbColor.asHexString();
+  return COLOR_TO_MODE.has(hexColor);
 }
 
 function isTextCodeShape(shape : Shape) : boolean {
@@ -276,7 +281,15 @@ function colorizeText(text : TextRange, mode : string) {
 }
 
 function colorizeSpans(shape : Shape) {
-  let text = shape.getText();
+  let text : TextRange | null = null;
+  try {
+    text = shape.getText();
+  } catch (e) {
+    // We don't know why this happens, but we have seen stack traces
+    // with it.
+    return;
+  }
+  if (text == null) return;
   if (text.isEmpty()) return;
   let str = text.asString();
   let spans : Array<CodeSpan> = [];
