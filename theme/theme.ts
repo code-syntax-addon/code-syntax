@@ -165,6 +165,18 @@ const MODES = {
     cm: "text/xml"
   },
   "dockerfile": "#fffef5",
+  "julia": {
+    color: "#f6fbff",
+    cm: "text/x-julia"
+  },
+  "rust": {
+    color: "#effffc",
+    cm: "text/x-rustsrc"
+  },
+  "r": {
+    color: "#f3f3ff",
+    cm: "text/x-rsrc"
+  }
 };
 
 const CODE_MIRROR_STYLES = {
