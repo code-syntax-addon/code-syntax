@@ -2,187 +2,238 @@
 
 // So we can import this file in the other libraries.
 export {
-  themer,
   SegmentStyle,
   Style,
-  Themer,
+  Themer, themer
 };
 
-class Style {
-  fontFamily : string;
-  italic : boolean;
-  bold : boolean;
-  foreground : string;
-  background : string;
+// Maps the mode to the CodeMirror mode, if the name is not the same.
+const MODE_TO_CODE_MIRROR = {
+  "c": "text/x-csrc",
+  "c++": "text/x-c++src",
+  "css": "text/x-gss",
+  "js": "text/javascript",
+  "jsx": "text/jsx",
+  "ts": "text/typescript",
+  "json": "application/json",
+  "java": "text/x-java",
+  "kotlin": "text/x-kotlin",
+  "c#": "text/x-csharp",
+  "objective-c": "text/x-objectivec",
+  "scala": "text/x-scala",
+  "html": "text/html",
+  "xml": "text/xml",
+  "julia": "text/x-julia",
+  "rust": "text/x-rustsrc",
+  "r": "text/x-rsrc",
+};
+
+const SPAN_REGEX = [
+  [/^[a-zA-Z_0-9<>]+(\/[a-zA-Z_0-9<>]+)+$/, "path"],
+  [/^(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))$/, "number"],
+  [/^(["]([^"\\]|[\\]["\\])*["])$/, "string"],
+  [/^([']([^"\\]|[\\]['\\])*['])$/, "string"],
+  [/^(null|undefined|true|false|nil)$/, "keyword"],
+  [/^[12]?[0-9]?[0-9](\.[12]?[0-9]?[0-9]){3}$/, "ipv4"],
+  [/.*/, "rest"],
+]
+
+type SyntaxConfig = {
+  // The default style for the mode.
+  "default"? : StyleConfig;
+  syntax? : Record<string, StyleConfig>;
 }
 
-class SegmentStyle extends Style {
-  mode : string;
-  codeMirrorMode : string;
+interface ModeConfig extends SyntaxConfig{
+  modeColor : string;
+};
 
-  public constructor(mode : string, cmMode : string) {
-    super();
+type Theme = {
+  "default": StyleConfig;
+  "syntax": Record<string, StyleConfig>;
+  "span-colors": Record<string, StyleConfig>;
+  "modes": Record<string, ModeConfig>;
+};
+
+// The colors are either strings (representing the color), or objects.
+type Style = {
+  fontFamily? : string;
+  italic? : boolean;
+  bold? : boolean;
+  foreground? : string;
+  background? : string;
+}
+
+
+// Combines the styles, and returns a new style.
+// The most precise style must be last.
+function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
+  let result : Style = {};
+  for (let i = 0; i < styles.length; i++) {
+    let style = styles[i];
+    if (!style) continue;
+    if (typeof style == "string") {
+      result.foreground = style;
+      continue;
+    }
+    // If the object contains an entry (even undefined) for the key, we use it.
+    // This way, we can override the default style and allow it stay unchanged.
+    if (style.hasOwnProperty("fontFamily")) result.fontFamily = style.fontFamily;
+    if (style.hasOwnProperty("italic")) result.italic = style.italic;
+    if (style.hasOwnProperty("bold")) result.bold = style.bold;
+    if (style.hasOwnProperty("foreground")) result.foreground = style.foreground;
+    if (style.hasOwnProperty("background")) result.background = style.background;
+  }
+  return result;
+}
+
+class SegmentStyle {
+  public mode : string;
+  public codeMirrorMode : string;
+  public background : string;
+  public defaultStyle : Style;
+  private syntax? : Record<string, StyleConfig>;
+
+  public constructor(
+      mode : string,
+      cmMode : string,
+      background : string,
+      defaultStyle : Style,
+      syntax? : Record<string, StyleConfig>,
+      ) {
     this.mode = mode;
     this.codeMirrorMode = cmMode;
+    this.background = background;
+    this.defaultStyle = defaultStyle;
+    this.syntax = syntax;
   }
 
-  public codeMirrorStyleToStyle(cmStyle : string) : Style  {
-    let result = new Style;
-    result.foreground = "#000000";
-    result.italic = false;
-    result.bold = false;
-    if (cmStyle === undefined || cmStyle === null) return result;
-    if (!(cmStyle in CODE_MIRROR_STYLES)) {
-      console.log("Missing style for " + cmStyle);
-      return result;
+  public codeMirrorStyleToStyle(cmStyle : string | null) : Style  {
+    if (!cmStyle) return this.defaultStyle;
+    let entry = this.syntax ? this.syntax[cmStyle] : undefined
+    if (!entry) {
+      console.log("No entry for " + cmStyle);
     }
-    let entry = CODE_MIRROR_STYLES[cmStyle];
-    if (typeof entry == "string") {
-      result.foreground = entry;
-    } else {
-      result.italic = entry.italic;
-      result.bold = entry.bold;
-      result.foreground = entry.color;
-    }
-    return result;
+    return mergeStyles(this.defaultStyle, entry);
   }
 }
 
 class Themer {
-  public getSegmentStyle(mode : string) : SegmentStyle {
-    let entry = MODES[mode];
-    if (!entry) return new SegmentStyle(mode, "");
-    let cmMode : string;
-    let color : string;
-    if (typeof entry === "string") {
-      cmMode = mode;
-      color = entry;
-    } else {
-      cmMode = entry.cm;
-      color = entry.color;
+  private theme : Theme;
+  private cachedSegmentStyles : Record<string, SegmentStyle> = {};
+
+  public constructor(theme : Theme) {
+    this.theme = theme;
+  }
+
+  private toStyle(config : StyleConfig) : Style {
+    if (typeof config == "string") {
+      return { foreground: config };
     }
-    let result = new SegmentStyle(mode, cmMode);
-    result.background = color;
-    result.fontFamily = FONT_FAMILY;
+    return config;
+  }
+
+  public getSegmentStyle(mode : string) : SegmentStyle {
+    let cached = this.cachedSegmentStyles[mode];
+    if (cached) return cached;
+
+    let entry = this.theme.modes[mode];
+    console.log("entry: " + entry, "mode: " + mode);
+    if (!entry) {
+      console.log("No entry for mode: " + mode);
+      return new SegmentStyle(mode, "", "#FFFFFF", this.toStyle(this.theme.default), undefined);
+    }
+
+    let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
+    let defaultStyle : Style = mergeStyles(this.theme.default, entry.default);
+    let syntax = entry.syntax ?? this.theme.syntax;
+    let result = new SegmentStyle(mode, cmMode, entry.modeColor, defaultStyle, syntax);
+    this.cachedSegmentStyles[mode] = result;
     return result;
   }
+
   public getCodeSpanStyle(text : string) : Style {
-    let foundColor : string = null;
-    for (let i = 0; i < SPAN_COLORS.length; i++) {
-      let entry = SPAN_COLORS[i]
+    let defaultStyle = this.theme.default;
+    for (let i = 0; i < SPAN_REGEX.length; i++) {
+      let entry = SPAN_REGEX[i]
       let re : RegExp = entry[0] as RegExp;
-      let color : string = entry[1] as string;
+      let spanName : string = entry[1] as string;
+      let style = this.theme["span-colors"][spanName]
+      if (!style) continue;  // Should not happen.
       if (re.test(text)) {
-        let result = new Style();
-        result.foreground = color;
-        result.fontFamily = FONT_FAMILY;
-        return result;
+        return mergeStyles(defaultStyle, style);
       }
     }
-    return null;
+    return this.toStyle(defaultStyle);
   }
+
   public getModeList() : Array<string> {
-    return Object.keys(MODES);
+    return Object.keys(DEFAULT_STYLES);
   }
 }
 
-const themer = new Themer();
+type StyleConfig = string | Style;
 
-const FONT_FAMILY = "Roboto Mono";
+// We have the following hierarchy. Styles are merged from top to bottom, with
+// the last style being the most precise.
+//
+// For spans:
+// - Theme default style (lower).
+// - Span style.
+//
+// For modes:
+// - Theme default style.
+// - Mode default style.
+// - CodeMirror style ("syntax").
 
-const SPAN_COLORS = [
-  [/^[a-zA-Z_0-9<>]+(\/[a-zA-Z_0-9<>]+)+$/, "#3c003c"], // Path.
-  [/^(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))$/, "#008c0c"], // Number.
-  [/^(["]([^"\\]|[\\]["\\])*["])$/, "#38008c"], // String.
-  [/^([']([^"\\]|[\\]['\\])*['])$/, "#38008c"], // String/Char.
-  [/^(null|undefined|true|false|nil)$/, "#8c0008"], // Keywords.
-  [/^[12]?[0-9]?[0-9](\.[12]?[0-9]?[0-9]){3}$/, "#8c3028"], // IPv4.
-  [/.*/, "#000c8c"], // Rest.
-];
-
-const MODES = {
-  "none" : "#f7f7f7",  // No specified mode.
-  "toit" : "#f2f8ff",
-  "dart" : "#f7fff7",
-  "shell": "#fff7f2",
-  "go": "#f7ffff",
-  "python": "#f3faff",
-  "yaml": "#f3fbfe",
-  "c": {
-    color: "#fffbf6",
-    cm: "text/x-csrc"
-  },
-  "c++": {
-    color: "#fffbf7",
-    cm: "text/x-c++src"
-  },
-  "css": {
-    color: "#fffdf5",
-    cm: "text/x-gss"
-  },
-  "js": {
-    color: "#f8f8ff",
-    cm: "text/javascript"
-  },
-  "jsx": {
-    color: "#f8f9ff",
-    cm: "text/jsx"
-  },
-  "ts": {
-    color: "#f8f8fe",
-    cm: "text/typescript"
-  },
-  "json": {
-    color: "#f2fbfe",
-    cm: "application/json"
-  },
-  "java": {
-    color: "#fffff7",
-    cm: "text/x-java"
-  },
-  "kotlin": {
-    color: "#f3f9ff",
-    cm: "text/x-kotlin"
-  },
-  "c#": {
-    color: "#fffff6",
-    cm: "text/x-csharp"
-  },
-  "objective-c": {
-    color: "#f5f6ff",
-    cm: "text/x-objectivec"
-  },
-  "scala": {
-    color: "#fffff5",
-    cm: "text/x-scala"
-  },
-  "html": {
-    color: "#fffdf4",
-    cm: "text/html"
-  },
-  "xml": {
-    color: "#fffef4",
-    cm: "text/xml"
-  },
-  "dockerfile": "#fffef5",
-  "julia": {
-    color: "#f6fbff",
-    cm: "text/x-julia"
-  },
-  "rust": {
-    color: "#effffc",
-    cm: "text/x-rustsrc"
-  },
-  "r": {
-    color: "#f3f3ff",
-    cm: "text/x-rsrc"
-  }
+const GLOBAL_DEFAULT_STYLE = {
+  fontFamily: "Roboto Mono",
+  italic: false,
+  bold: false,
+  foreground: "#000000",
 };
 
-const CODE_MIRROR_STYLES = {
+const DEFAULT_SPAN_COLORS : Record<string, StyleConfig> = {
+  "path": "#3c003c",
+  "number": "#008c0c",
+  "string": "#38008c",
+  "keyword": "#8c0008",
+  "ipv4": "#8c3028",
+  "rest": "#000c8c",
+};
+
+const DEFAULT_STYLES : Record<string, ModeConfig> = {
+  "none" : { modeColor: "#f7f7f7" },  // No specified mode.
+  "toit" : { modeColor: "#f2f8ff" },
+  "dart" : { modeColor: "#f7fff7" },
+  "shell": { modeColor: "#fff7f2" },
+  "go": { modeColor: "#f7ffff" },
+  "python": { modeColor: "#f3faff" },
+  "yaml": { modeColor: "#f3fbfe" },
+  "c": { modeColor: "#fffbf6" },
+  "c++": { modeColor: "#fffbf7" },
+  "css": { modeColor: "#fffdf5" },
+  "js": { modeColor: "#f8f8ff" },
+  "jsx": { modeColor: "#f8f9ff" },
+  "ts": { modeColor: "#f8f8fe" },
+  "json": { modeColor: "#f2fbfe" },
+  "java": { modeColor: "#fffff7" },
+  "kotlin": { modeColor: "#f3f9ff" },
+  "c#": { modeColor: "#fffff6" },
+  "objective-c": { modeColor: "#f5f6ff" },
+  "scala": { modeColor: "#fffff5" },
+  "html": { modeColor: "#fffdf4" },
+  "xml": { modeColor: "#fffef4" },
+  "dockerfile": { modeColor: "#fffef5" },
+  "julia": { modeColor: "#f6fbff" },
+  "rust": { modeColor: "#effffc" },
+  "r": { modeColor: "#f3f3ff" },
+};
+
+const DEFAULT_COLORS : Record<string, StyleConfig> = {
   "header": {
     bold: true,
-    color: "#0000ff",
+    foreground: "#0000ff",
   },
   "quote": "#009000",
   "negative": "#d04040",
@@ -195,7 +246,7 @@ const CODE_MIRROR_STYLES = {
   },
   "keyword": {
     bold: true,
-    color: "#700080",
+    foreground: "#700080",
   },
   "atom": "#201090",
   "number": "#106040",
@@ -205,14 +256,14 @@ const CODE_MIRROR_STYLES = {
   "property": "#572000",
   "operator": {
     bold: true,
-    color: "#ee11ff",
+    foreground: "#ee11ff",
   },
   "variable-2": "#0050a0",
   "variable-3": "#008050",
   "type": "#008050",
   "comment": {
     italic: true,
-    color: "#a05000",
+    foreground: "#a05000",
   },
   "string": "#a01010",
   "string-2": "#f05000",
@@ -227,3 +278,12 @@ const CODE_MIRROR_STYLES = {
   "error": "#f00000",
   "invalidchar": "#f00000",
 };
+
+const DEFAULT_THEME : Theme = {
+  "default": GLOBAL_DEFAULT_STYLE,
+  "syntax": DEFAULT_COLORS,
+  "span-colors": DEFAULT_SPAN_COLORS,
+  "modes": DEFAULT_STYLES,
+}
+
+const themer = new Themer(DEFAULT_THEME);

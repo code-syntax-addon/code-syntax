@@ -155,7 +155,7 @@ function colorizeSelectionAs(mode : string) {
   let lines : Array<string> = []
   let texts : Array<Array<any>> = []
 
-  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
+  let codeMirrorStyle = MODE_TO_STYLE.get(mode)!;
 
   for (let rangeElement of rangeElements) {
     let element = rangeElement.getElement();
@@ -183,11 +183,16 @@ function colorizeSelectionAs(mode : string) {
       }
       if (length == 0) continue;
 
-      if (codeMirrorStyle.fontFamily) {
-        text.setFontFamily(from, from + length - 1, codeMirrorStyle.fontFamily)
-      }
-      text.setBold(from, from + length - 1, codeMirrorStyle.bold || false)
-      text.setItalic(from, from + length - 1, codeMirrorStyle.italic || false)
+      let to = from + length - 1;
+      let defaultStyle = codeMirrorStyle.defaultStyle;
+      let fontFamily = defaultStyle.fontFamily;
+      if (fontFamily) text.setFontFamily(from, to, fontFamily);
+      let foreground = defaultStyle.foreground;
+      if (foreground) text.setForegroundColor(from, to, foreground);
+      let background = defaultStyle.background;
+      if (background) text.setBackgroundColor(from, to, background);
+      if (defaultStyle.bold !== undefined) text.setBold(from, to, defaultStyle.bold);
+      if (defaultStyle.italic !== undefined) text.setItalic(from, to, defaultStyle.italic);
       let elementLines = content.split("\r");
       let offset = from;
       for (let line of elementLines) {
@@ -199,7 +204,7 @@ function colorizeSelectionAs(mode : string) {
   }
   let lineIndex = 0;
   let lineOffset = 0;
-  codemirror.runMode(lines, codeMirrorStyle.codeMirrorMode, function(token, style) {
+  codemirror.runMode(lines, codeMirrorStyle.codeMirrorMode, function(token : string, style : string) {
     if (token == "\n") {
       lineIndex++;
       lineOffset = 0;
@@ -213,7 +218,7 @@ function colorizeSelectionAs(mode : string) {
   });
 }
 
-let defaultWidth = null;
+let defaultWidth : number | null = null;
 
 // Returns the default width of a paragraph.
 // Only works for elements that aren't nested.
@@ -356,7 +361,7 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
   let cell = table.appendTableRow().appendTableCell()
   segment.cell = cell;
 
-  let minStart = 999999;
+  let minStart : number | null = 999999;
 
   for (let para of paras) {
     let start = para.getIndentStart();
@@ -457,20 +462,21 @@ function boxSegments(segments : Array<CodeSegment>) {
       removeBackticks(segment);
     }
 
-    let style = MODE_TO_STYLE.get(segment.mode);
+    let style = MODE_TO_STYLE.get(segment.mode)!;
     segment.cell.setBackgroundColor(style.background);
     segment.cell.getParentTable().setBorderColor("#e0e0e0");
     segment.cell.setPaddingTop(10);
     segment.cell.setPaddingBottom(10);
     segment.cell.setPaddingLeft(10);
     segment.cell.setPaddingRight(10);
+    let defaultStyle = style.defaultStyle;
     for (let para of segment.paragraphs) {
       let text = para.editAsText();
-      if (style.foreground) text.setForegroundColor(style.foreground);
-      // Background is set on cell-level.
-      if (style.bold) text.setBold(style.bold);
-      if (style.italic) text.setItalic(style.italic);
-      if (style.fontFamily) text.setFontFamily(style.fontFamily);
+      if (defaultStyle.foreground) text.setForegroundColor(defaultStyle.foreground);
+      if (defaultStyle.background) text.setBackgroundColor(defaultStyle.background);
+      if (defaultStyle.fontFamily) text.setFontFamily(defaultStyle.fontFamily);
+      if (defaultStyle.bold !== undefined) text.setBold(defaultStyle.bold);
+      if (defaultStyle.italic !== undefined) text.setItalic(defaultStyle.italic);
     }
   }
 }
@@ -546,7 +552,7 @@ function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
   // of the paragraphs.
   // Instead we record the changes we would like to do, and then do them
   // once we have run through all paragraphs.
-  let headingsToChange = [];
+  let headingsToChange : Array<any> = [];
   for (let para of DocumentApp.getActiveDocument().getBody().getParagraphs()) {
     if (inCodeSegments.has(computeElementPath(para))) {
       continue;

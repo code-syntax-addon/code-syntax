@@ -6,13 +6,13 @@
     "libraries": [
       {
         "userSymbol": "codemirror",
-        "version": "6",
+        "version": "7",
         "libraryId": "1vKz8xYpdvP9eOAw-C6SHOLX7s-yBPsuVqEJTlWR_c1Vv772lewlbxNrx",
         "developmentMode": false
       },
       {
         "userSymbol": "theme",
-        "version": "6",
+        "version": "8",
         "libraryId": "1PyJpoB7MqhvFw8Zjw2IT1koJ1tIf4DHdIrmGWuaKofoSr2ZYX0DOX73b",
         "developmentMode": false
       }
