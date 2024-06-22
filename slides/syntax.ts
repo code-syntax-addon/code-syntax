@@ -79,7 +79,8 @@ class CodeShape {
 
   static fromText(shape : Shape) : CodeShape {
     let str = shape.getText().asString();
-    let firstLine = str.substring(0, str.indexOf("\n"));
+    let lineEnd = indexOfLineSeparator(str);
+    let firstLine = str.substring(0, lineEnd);
     let mode = firstLine.substring(3).trim();  // Skip the triple-quotes.
     if (mode === "") mode = "none";
     return new CodeShape(shape, mode);
@@ -122,7 +123,7 @@ function changeColorTo(mode : string) {
   let selection = SlidesApp.getActivePresentation().getSelection();
   let elementRange = selection.getPageElementRange();
   elementRange.getPageElements().forEach(function(pe) {
-     changeColorOfPageElement(pe, mode);
+    changeColorOfPageElement(pe, mode);
   });
 }
 
@@ -132,10 +133,13 @@ function colorizeSelectionAs(mode : string) {
   if (!text) return;
   if (text.isEmpty()) return;
   let textStyle = text.getTextStyle();
-  let style = MODE_TO_STYLE.get(mode)
-  if (style.fontFamily) textStyle.setFontFamily(style.fontFamily);
-  textStyle.setBold(style.bold || false);
-  textStyle.setItalic(style.italic || false);
+  let style = MODE_TO_STYLE.get(mode)!;
+  let defaultStyle = style.defaultStyle;
+  if (defaultStyle.fontFamily) textStyle.setFontFamily(defaultStyle.fontFamily);
+  if (defaultStyle.foreground) textStyle.setForegroundColor(defaultStyle.foreground);
+  if (defaultStyle.background) textStyle.setBackgroundColor(defaultStyle.background);
+  if (defaultStyle.bold !== undefined) textStyle.setBold(defaultStyle.bold);
+  if (defaultStyle.italic !== undefined) textStyle.setItalic(defaultStyle.italic);
   colorizeText(text, mode)
 }
 
@@ -218,39 +222,50 @@ function isBoxedCodeShape(shape : Shape) : boolean {
 }
 
 function isTextCodeShape(shape : Shape) : boolean {
-  if (shape.getShapeType() != SlidesApp.ShapeType.TEXT_BOX) return false;
   let str = shape.getText().asString();
   if (!str.startsWith("```")) return false;
-  let lastTicks = str.lastIndexOf('\n```');
+  let lastTicksN = str.lastIndexOf('\n```');
+  let lastTicksV = str.lastIndexOf('\v```'); // Vertical tab.
+  let lastTicks = Math.max(lastTicksN, lastTicksV);
   if (lastTicks == -1) return false;
   for (let i = lastTicks + 4; i < str.length; i++) {
-    if (str.charAt(i) != ' ' && str.charAt(i) != '\n') return false;
+    if (str.charAt(i) != ' ' && str.charAt(i) != '\n' && str.charAt(i) != '\v') return false;
   }
   return true;
 }
 
 function boxShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
-  let style = MODE_TO_STYLE.get(codeShape.mode);
+  let style = MODE_TO_STYLE.get(codeShape.mode)!;
   shape.getFill().setSolidFill(style.background);
 
   let text = shape.getText();
   if (text.isEmpty()) return;
   let textStyle = text.getTextStyle();
-  if (style.fontFamily) textStyle.setFontFamily(style.fontFamily);
-  // TODO(florian): would be nice if we could get the default color from the
-  // template. That said: it's probably ok if the code doesn't use the same color.
-  textStyle.setForegroundColor(style.foreground || "#000000");
-  textStyle.setBold(style.bold || false);
-  textStyle.setItalic(style.italic || false);
+  let defaultStyle = style.defaultStyle;
+  if (defaultStyle.fontFamily) textStyle.setFontFamily(defaultStyle.fontFamily);
+  if (defaultStyle.foreground) textStyle.setForegroundColor(defaultStyle.foreground);
+  if (defaultStyle.background) textStyle.setBackgroundColor(defaultStyle.background);
+  if (defaultStyle.bold !== undefined) textStyle.setBold(defaultStyle.bold);
+  if (defaultStyle.italic !== undefined) textStyle.setItalic(defaultStyle.italic);
+}
+
+function indexOfLineSeparator(str : string) : number {
+  let n = str.indexOf('\n');
+  let v = str.indexOf('\v');
+  if (n == -1) return v;
+  if (v == -1) return n;
+  return Math.min(n, v);
 }
 
 function removeTripleBackticks(codeShape : CodeShape) {
   let shape = codeShape.shape;
   let text = shape.getText();
   let str = text.asString();
-  let endOfFirstLine = str.indexOf('\n');
-  let startOfLastLine = str.lastIndexOf('\n```');
+  let endOfFirstLine = indexOfLineSeparator(str);
+  let startOfLastLineN = str.lastIndexOf('\n```');
+  let startOfLastLineV = str.lastIndexOf('\v```');  // Vertical tab.
+  let startOfLastLine = Math.max(startOfLastLineN, startOfLastLineV);
   if (endOfFirstLine === startOfLastLine) {
     text.clear();
   } else {
@@ -270,9 +285,9 @@ function colorizeCodeShape(codeShape : CodeShape) {
 function colorizeText(text : TextRange, mode : string) {
   let str = text.asString();
   str = str.replace(/\x0B/g, "\n")
-  let codeMirrorStyle = MODE_TO_STYLE.get(mode);
+  let codeMirrorStyle = MODE_TO_STYLE.get(mode)!;
   let offset = 0;
-  codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token, tokenStyle) {
+  codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token : string, tokenStyle : string) {
     let range = text.getRange(offset, offset + token.length);
     let style = codeMirrorStyle.codeMirrorStyleToStyle(tokenStyle);
     applyStyle(range, style)
@@ -330,13 +345,17 @@ function colorizeSpans(shape : Shape) {
 }
 
 function applyStyle(range : TextRange, style : theme.Style) {
-  if (!style) return;
   let textStyle = range.getTextStyle();
-  // We are setting the values, even if they are undefined, to revert them
-  // to the default (in case they have been set before).
-  if (style.italic !== undefined) textStyle.setItalic(style.italic);
-  if (style.bold !== undefined) textStyle.setBold(style.bold);
-  if (style.foreground !== undefined) textStyle.setForegroundColor(style.foreground);
-  if (style.background !== undefined) textStyle.setBackgroundColor(style.background);
-  if (style.fontFamily !== undefined) textStyle.setFontFamily(style.fontFamily);
+  // For some reason we sometimes get "The object (gb66c79a860_0_8) has no text."
+  // when setting the foreground. We can see that the text is "\x0a", but we
+  // don't know why it happens. Just catch the exception.
+  try {
+    if (style.foreground) textStyle.setForegroundColor(style.foreground);
+    if (style.background) textStyle.setBackgroundColor(style.background);
+    if (style.fontFamily) textStyle.setFontFamily(style.fontFamily);
+    if (style.italic !== undefined) textStyle.setItalic(style.italic);
+    if (style.bold !== undefined) textStyle.setBold(style.bold);
+  } catch (e) {
+    // Do nothing.
+  }
 }
