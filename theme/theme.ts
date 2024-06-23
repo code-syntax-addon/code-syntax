@@ -138,9 +138,7 @@ class Themer {
     if (cached) return cached;
 
     let entry = this.theme.modes[mode];
-    console.log("entry: " + entry, "mode: " + mode);
     if (!entry) {
-      console.log("No entry for mode: " + mode);
       return new SegmentStyle(mode, "", "#FFFFFF", this.toStyle(this.theme.default), undefined);
     }
 
