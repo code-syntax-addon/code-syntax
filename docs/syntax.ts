@@ -35,7 +35,7 @@ function onOpen(e) {
   menu.addItem("Colorize", "colorize");
   let subSelection = ui.createMenu("Colorize Selection as")
   let subMode = ui.createMenu("Change Mode to");
-  for (let mode of theme.themer.getModeList()) {
+  for (let mode of theme.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
@@ -44,6 +44,11 @@ function onOpen(e) {
   }
   menu.addSubMenu(subSelection);
   menu.addSubMenu(subMode);
+  let advanced = ui.createMenu("Advanced");
+  advanced.addItem("Show themes", "showThemes");
+  advanced.addItem("Set document theme", "setDocumentTheme");
+  advanced.addItem("Set user theme", "setUserTheme");
+  menu.addSubMenu(advanced);
   menu.addItem("License", "showLicense");
   menu.addToUi();
 }
@@ -52,6 +57,17 @@ function showLicense() {
   let str = "This project is made possible by open source software:\n"
   str += "\n"
   str += thirdPartyLicenses
+  let ui = DocumentApp.getUi();
+  ui.alert(str);
+}
+
+function showThemes() {
+  let userTheme = PropertiesService.getUserProperties().getProperty('theme');
+  let documentTheme = PropertiesService.getDocumentProperties().getProperty('theme');
+  if (!userTheme) userTheme = "<none>";
+  if (!documentTheme) documentTheme = "<none>";
+  let str = "User theme: " + userTheme + "\n";
+  str += "Document theme: " + documentTheme + "\n";
   let ui = DocumentApp.getUi();
   ui.alert(str);
 }
@@ -66,19 +82,34 @@ type TableCell = docs.TableCell;
 type Text = docs.Text;
 type RangeElement = docs.RangeElement;
 
-const MODE_TO_STYLE : Map<string, theme.SegmentStyle> = new Map();
-const COLOR_TO_MODE : Map<string, string> = new Map();
+let MODE_TO_STYLE : Map<string, theme.SegmentStyle> | null = null;
+let COLOR_TO_MODE : Map<string, string> | null = null;
 
-for (let mode of theme.themer.getModeList()) {
-  let segmentStyle = theme.themer.getSegmentStyle(mode);
-  let color = segmentStyle.background;
-  // We don't want to deal with different casing later on.
-  COLOR_TO_MODE.set(color.toLowerCase(), mode);
-  COLOR_TO_MODE.set(color.toUpperCase(), mode);
-  MODE_TO_STYLE.set(mode, segmentStyle);
-  // There is no way to pass a parameter from the menu to a function.
-  // We therefore dynamically create individual functions that can be used
-  // as targets.
+function setMaps() {
+  if (MODE_TO_STYLE) return;
+  COLOR_TO_MODE = new Map<string, string>();
+  MODE_TO_STYLE = new Map<string, theme.SegmentStyle>();
+  for (let mode of theme.getModeList()) {
+    let segmentStyle = theme.getThemer().getSegmentStyle(mode);
+    let color = segmentStyle.background;
+    // We don't want to deal with different casing later on.
+    COLOR_TO_MODE.set(color.toLowerCase(), mode);
+    COLOR_TO_MODE.set(color.toUpperCase(), mode);
+    MODE_TO_STYLE.set(mode, segmentStyle);
+  }
+}
+
+function getModeToStyle() : Map<string, theme.SegmentStyle> {
+  setMaps();
+  return MODE_TO_STYLE!;
+}
+
+function getColorToMode() : Map<string, string> {
+  setMaps();
+  return COLOR_TO_MODE!;
+}
+
+for (let mode of theme.getModeList()) {
   let self : any = this;
   self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
@@ -142,7 +173,7 @@ function colorize() {
   // Otherwise we would remove the mode line, without giving the user a chance
   // to fix it.
   codeSegments = codeSegments.filter(function(segment) {
-    return MODE_TO_STYLE.has(segment.mode);
+    return getModeToStyle().has(segment.mode);
   });
   boxSegments(codeSegments);
   highlightSegments(codeSegments);
@@ -155,7 +186,7 @@ function colorizeSelectionAs(mode : string) {
   let lines : Array<string> = []
   let texts : Array<Array<any>> = []
 
-  let codeMirrorStyle = MODE_TO_STYLE.get(mode)!;
+  let codeMirrorStyle = getModeToStyle().get(mode)!;
 
   for (let rangeElement of rangeElements) {
     let element = rangeElement.getElement();
@@ -251,7 +282,7 @@ function codeSegmentFromCodeTable(table : Table) : CodeSegment {
     paras.push(para);
   }
   let backColor = cell.getBackgroundColor();
-  let mode = COLOR_TO_MODE.get(backColor) || "<unknown>";
+  let mode = getColorToMode().get(backColor) || "<unknown>";
   let codeSegment = new CodeSegment(paras, mode);
   codeSegment.cell = cell;
   return codeSegment;
@@ -449,7 +480,7 @@ function removeBackticks(segment : CodeSegment) {
   // If we removed all paragraphs, add a fresh one, as Google Docs will otherwise
   // add one anyway, and we won't change the styling of that one.
   if (paragraphs.length == 0) {
-    let para = segment.cell.appendParagraph("");
+    let para = segment.cell!.appendParagraph("");
     segment.paragraphs = [para];
   }
 }
@@ -462,13 +493,14 @@ function boxSegments(segments : Array<CodeSegment>) {
       removeBackticks(segment);
     }
 
-    let style = MODE_TO_STYLE.get(segment.mode)!;
-    segment.cell.setBackgroundColor(style.background);
-    segment.cell.getParentTable().setBorderColor("#e0e0e0");
-    segment.cell.setPaddingTop(10);
-    segment.cell.setPaddingBottom(10);
-    segment.cell.setPaddingLeft(10);
-    segment.cell.setPaddingRight(10);
+    let style = getModeToStyle().get(segment.mode)!;
+    let cell = segment.cell!;
+    cell.setBackgroundColor(style.background);
+    cell.getParentTable().setBorderColor("#e0e0e0");
+    cell.setPaddingTop(10);
+    cell.setPaddingBottom(10);
+    cell.setPaddingLeft(10);
+    cell.setPaddingRight(10);
     let defaultStyle = style.defaultStyle;
     for (let para of segment.paragraphs) {
       let text = para.editAsText();
@@ -499,7 +531,7 @@ function highlightSegment(segment : CodeSegment) {
   }
   let current_index = 0;  // The index of the current paragraph.
   let offset = 0;  // The offset within the paragraph.
-  let segmentStyle = MODE_TO_STYLE.get(segment.mode);
+  let segmentStyle = getModeToStyle().get(segment.mode);
   if (segmentStyle === undefined) return;  // This happens when the user wrote their own code segment.
   codemirror.runMode(lines, segmentStyle.codeMirrorMode, function(token, style) {
     let current = paras[current_index];
@@ -612,7 +644,7 @@ function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
 function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
   let text = para.editAsText();
   let str = para.getText().substring(startTick + 1, endTick);
-  let style = theme.themer.getCodeSpanStyle(str);
+  let style = theme.getThemer().getCodeSpanStyle(str);
   applyStyle(text, startTick, endTick, style);
 
   // Delete the end-tick first, as removing the start-tick first, would change the

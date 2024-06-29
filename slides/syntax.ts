@@ -36,7 +36,7 @@ function onOpen(e) {
   menu.addItem("Colorize Slide", "colorizeSlide");
   let subSelection = ui.createMenu("Colorize Selection as")
   let subMode = ui.createMenu("Change Mode to");
-  for (let mode of theme.themer.getModeList()) {
+  for (let mode of theme.getModeList()) {
     // There is no way to pass a parameter from the menu to a function.
     // We therefore dynamically create individual functions that can be used
     // as targets. (See below for the actual creation of the functions.)
@@ -45,6 +45,11 @@ function onOpen(e) {
   }
   menu.addSubMenu(subSelection);
   menu.addSubMenu(subMode);
+  let advanced = ui.createMenu("Advanced");
+  advanced.addItem("Show themes", "showThemes");
+  advanced.addItem("Set document theme", "setDocumentTheme");
+  advanced.addItem("Set user theme", "setUserTheme");
+  menu.addSubMenu(advanced);
   menu.addItem("License", "showLicense")
   menu.addToUi();
 }
@@ -97,19 +102,34 @@ class CodeSpan {
   }
 }
 
-const MODE_TO_STYLE : Map<string, theme.SegmentStyle> = new Map();
-const COLOR_TO_MODE : Map<string, string> = new Map();
+let MODE_TO_STYLE : Map<string, theme.SegmentStyle> | null = null;
+let COLOR_TO_MODE : Map<string, string> | null = null;
 
-for (let mode of theme.themer.getModeList()) {
-  let segmentStyle = theme.themer.getSegmentStyle(mode);
-  let color = segmentStyle.background;
-  // We don't want to deal with different casing later on.
-  COLOR_TO_MODE.set(color.toLowerCase(), mode);
-  COLOR_TO_MODE.set(color.toUpperCase(), mode);
-  MODE_TO_STYLE.set(mode, segmentStyle);
-  // There is no way to pass a parameter from the menu to a function.
-  // We therefore dynamically create individual functions that can be used
-  // as targets.
+function setMaps() {
+  if (MODE_TO_STYLE) return;
+  COLOR_TO_MODE = new Map<string, string>();
+  MODE_TO_STYLE = new Map<string, theme.SegmentStyle>();
+  for (let mode of theme.getModeList()) {
+    let segmentStyle = theme.getThemer().getSegmentStyle(mode);
+    let color = segmentStyle.background;
+    // We don't want to deal with different casing later on.
+    COLOR_TO_MODE.set(color.toLowerCase(), mode);
+    COLOR_TO_MODE.set(color.toUpperCase(), mode);
+    MODE_TO_STYLE.set(mode, segmentStyle);
+  }
+}
+
+function getModeToStyle() : Map<string, theme.SegmentStyle> {
+  setMaps();
+  return MODE_TO_STYLE!;
+}
+
+function getColorToMode() : Map<string, string> {
+  setMaps();
+  return COLOR_TO_MODE!;
+}
+
+for (let mode of theme.getModeList()) {
   let self : any = this;
   self[changeColorNameFor(mode)] = function() {
     changeColorTo(mode);
@@ -133,7 +153,7 @@ function colorizeSelectionAs(mode : string) {
   if (!text) return;
   if (text.isEmpty()) return;
   let textStyle = text.getTextStyle();
-  let style = MODE_TO_STYLE.get(mode)!;
+  let style = getModeToStyle().get(mode)!;
   let defaultStyle = style.defaultStyle;
   if (defaultStyle.fontFamily) textStyle.setFontFamily(defaultStyle.fontFamily);
   if (defaultStyle.foreground) textStyle.setForegroundColor(defaultStyle.foreground);
@@ -193,7 +213,7 @@ function doShape(shape : Shape) {
     colorizeCodeShape(codeShape);
   } else if (isTextCodeShape(shape)) {
     codeShape = CodeShape.fromText(shape);
-    if (!MODE_TO_STYLE.has(codeShape.mode)) return
+    if (!getModeToStyle().has(codeShape.mode)) return
     // Box first, as this makes it easier to apply text styles.
     // GAS doesn't like it when there is no text.
     boxShape(codeShape);
@@ -205,7 +225,7 @@ function doShape(shape : Shape) {
 }
 
 function modeFromColor(color : string) : string {
-  return COLOR_TO_MODE.get(color) || "<unknown>";
+  return getColorToMode().get(color) || "<unknown>";
 }
 
 function isBoxedCodeShape(shape : Shape) : boolean {
@@ -218,7 +238,7 @@ function isBoxedCodeShape(shape : Shape) : boolean {
   const rgbColor = color.asRgbColor();
   if (!rgbColor) return false;
   const hexColor = rgbColor.asHexString();
-  return COLOR_TO_MODE.has(hexColor);
+  return getColorToMode().has(hexColor);
 }
 
 function isTextCodeShape(shape : Shape) : boolean {
@@ -236,7 +256,7 @@ function isTextCodeShape(shape : Shape) : boolean {
 
 function boxShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
-  let style = MODE_TO_STYLE.get(codeShape.mode)!;
+  let style = getModeToStyle().get(codeShape.mode)!;
   shape.getFill().setSolidFill(style.background);
 
   let text = shape.getText();
@@ -285,7 +305,7 @@ function colorizeCodeShape(codeShape : CodeShape) {
 function colorizeText(text : TextRange, mode : string) {
   let str = text.asString();
   str = str.replace(/\x0B/g, "\n")
-  let codeMirrorStyle = MODE_TO_STYLE.get(mode)!;
+  let codeMirrorStyle = getModeToStyle().get(mode)!;
   let offset = 0;
   codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token : string, tokenStyle : string) {
     let range = text.getRange(offset, offset + token.length);
@@ -334,7 +354,7 @@ function colorizeSpans(shape : Shape) {
   for (let i = spans.length - 1; i >= 0; i--) {
     let span = spans[i];
     let rangeText = text.asString().substring(span.from + 1, span.to - 1)
-    let style = theme.themer.getCodeSpanStyle(rangeText);
+    let style = theme.getThemer().getCodeSpanStyle(rangeText);
     // We change the section with the back-ticks, and then remove the ticks afterwards.
     // This way we never have to deal with empty strings.
     let range = text.getRange(span.from, span.to);

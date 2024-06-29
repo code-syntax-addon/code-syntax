@@ -2,9 +2,14 @@
 
 // So we can import this file in the other libraries.
 export {
+  DEFAULT_THEME,
   SegmentStyle,
   Style,
-  Themer, themer
+  Themer,
+  getModeList,
+  getThemer,
+  setDocumentTheme,
+  setUserTheme,
 };
 
 // Maps the mode to the CodeMirror mode, if the name is not the same.
@@ -38,22 +43,43 @@ const SPAN_REGEX = [
   [/.*/, "rest"],
 ]
 
+function checkRecord(path: Array<string>, value: any, check: (path: Array<string>, value: any) => void): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Record ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  for (const key in value) {
+    check([...path, key], value[key]);
+  }
+}
+
 type SyntaxConfig = {
   // The default style for the mode.
   "default"? : StyleConfig;
   syntax? : Record<string, StyleConfig>;
 }
 
+function checkSyntaxConfig(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid SyntaxConfig ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.default !== undefined) {
+    checkStyleConfig([...path, 'default'], value.default);
+  }
+  if (value.syntax !== undefined) {
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleConfig);
+  }
+}
+
 interface ModeConfig extends SyntaxConfig{
   modeColor : string;
 };
 
-type Theme = {
-  "default": StyleConfig;
-  "syntax": Record<string, StyleConfig>;
-  "span-colors": Record<string, StyleConfig>;
-  "modes": Record<string, ModeConfig>;
-};
+function checkModeConfig(path: Array<string>, value: any): void {
+  checkSyntaxConfig(path, value);
+  if (typeof value.modeColor !== 'string') {
+    throw new Error(`Invalid 'modeColor' in ModeConfig ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
+  }
+}
 
 // The colors are either strings (representing the color), or objects.
 type Style = {
@@ -64,6 +90,58 @@ type Style = {
   background? : string;
 }
 
+function checkStyle(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Style ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.fontFamily !== undefined && typeof value.fontFamily !== 'string') {
+    throw new Error(`Invalid 'fontFamily' in Style ${path.join('.')}: ${JSON.stringify(value.fontFamily)}`);
+  }
+  if (value.italic !== undefined && typeof value.italic !== 'boolean') {
+    throw new Error(`Invalid 'italic' in Style ${path.join('.')}: ${JSON.stringify(value.italic)}`);
+  }
+  if (value.bold !== undefined && typeof value.bold !== 'boolean') {
+    throw new Error(`Invalid 'bold' in Style ${path.join('.')}: ${JSON.stringify(value.bold)}`);
+  }
+  if (value.foreground !== undefined && typeof value.foreground !== 'string') {
+    throw new Error(`Invalid 'foreground' in Style ${path.join('.')}: ${JSON.stringify(value.foreground)}`);
+  }
+  if (value.background !== undefined && typeof value.background !== 'string') {
+    throw new Error(`Invalid 'background' in Style ${path.join('.')}: ${JSON.stringify(value.background)}`);
+  }
+}
+
+type StyleConfig = string | Style;
+
+function checkStyleConfig(path: Array<string>, value: any): void {
+  if (typeof value === 'string') return;
+  checkStyle(path, value);
+}
+
+type Theme = {
+  default?: StyleConfig;
+  syntax?: Record<string, StyleConfig>;
+  spanColors?: Record<string, StyleConfig>;
+  modes?: Record<string, ModeConfig>;
+};
+
+function checkTheme(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Theme ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.default !== undefined) {
+    checkStyleConfig([...path, 'default'], value.default);
+  }
+  if (value.syntax !== undefined) {
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleConfig);
+  }
+  if (value.spanColors !== undefined) {
+    checkRecord([...path, 'spanColors'], value.spanColors, checkStyleConfig);
+  }
+  if (value.modes !== undefined) {
+    checkRecord([...path, 'modes'], value.modes, checkModeConfig);
+  }
+}
 
 // Combines the styles, and returns a new style.
 // The most precise style must be last.
@@ -133,17 +211,25 @@ class Themer {
     return config;
   }
 
+  private getDefaultStyle() : Style {
+    return this.toStyle(this.theme.default ?? DEFAULT_THEME.default!);
+  }
+
   public getSegmentStyle(mode : string) : SegmentStyle {
     let cached = this.cachedSegmentStyles[mode];
     if (cached) return cached;
 
-    let entry = this.theme.modes[mode];
+    let entry = this.theme.modes?.[mode];
     if (!entry) {
-      return new SegmentStyle(mode, "", "#FFFFFF", this.toStyle(this.theme.default), undefined);
+      // Use the default style.
+      entry = DEFAULT_THEME.modes![mode];
+    }
+    if (!entry) {
+      return new SegmentStyle(mode, "", "#FFFFFF", this.getDefaultStyle());
     }
 
     let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
-    let defaultStyle : Style = mergeStyles(this.theme.default, entry.default);
+    let defaultStyle : Style = mergeStyles(this.getDefaultStyle(), entry.default);
     let syntax = entry.syntax ?? this.theme.syntax;
     let result = new SegmentStyle(mode, cmMode, entry.modeColor, defaultStyle, syntax);
     this.cachedSegmentStyles[mode] = result;
@@ -151,26 +237,25 @@ class Themer {
   }
 
   public getCodeSpanStyle(text : string) : Style {
-    let defaultStyle = this.theme.default;
+    let defaultStyle = this.getDefaultStyle();
     for (let i = 0; i < SPAN_REGEX.length; i++) {
       let entry = SPAN_REGEX[i]
       let re : RegExp = entry[0] as RegExp;
       let spanName : string = entry[1] as string;
-      let style = this.theme["span-colors"][spanName]
+      let style = this.theme.spanColors?.[spanName]
+      if (!style) style = DEFAULT_THEME.spanColors![spanName];
       if (!style) continue;  // Should not happen.
       if (re.test(text)) {
         return mergeStyles(defaultStyle, style);
       }
     }
-    return this.toStyle(defaultStyle);
-  }
-
-  public getModeList() : Array<string> {
-    return Object.keys(DEFAULT_STYLES);
+    return defaultStyle;
   }
 }
 
-type StyleConfig = string | Style;
+function getModeList() : Array<string> {
+  return Object.keys(DEFAULT_STYLES);
+}
 
 // We have the following hierarchy. Styles are merged from top to bottom, with
 // the last style being the most precise.
@@ -278,10 +363,55 @@ const DEFAULT_COLORS : Record<string, StyleConfig> = {
 };
 
 const DEFAULT_THEME : Theme = {
-  "default": GLOBAL_DEFAULT_STYLE,
-  "syntax": DEFAULT_COLORS,
-  "span-colors": DEFAULT_SPAN_COLORS,
-  "modes": DEFAULT_STYLES,
+  default: GLOBAL_DEFAULT_STYLE,
+  syntax: DEFAULT_COLORS,
+  spanColors: DEFAULT_SPAN_COLORS,
+  modes: DEFAULT_STYLES,
 }
 
-const themer = new Themer(DEFAULT_THEME);
+let themer : Themer | null = null;
+
+function getThemer() : Themer {
+  if (!themer) {
+    let documentTheme = PropertiesService.getDocumentProperties().getProperty('theme');
+    if (documentTheme) {
+      themer = new Themer(JSON.parse(documentTheme));
+    } else {
+      let userTheme = PropertiesService.getUserProperties().getProperty('theme');
+      if (userTheme) {
+        themer = new Themer(JSON.parse(userTheme));
+      } else {
+        themer = new Themer(DEFAULT_THEME);
+      }
+    }
+  }
+  return themer;
+}
+
+function setDocumentTheme() {
+  setTheme("document", PropertiesService.getDocumentProperties());
+}
+
+function setUserTheme() {
+  setTheme("user", PropertiesService.getUserProperties());
+}
+
+function setTheme(name : string, properties : GoogleAppsScript.Properties.Properties) {
+  let ui = DocumentApp.getUi();
+  let result = ui.prompt("Set " + name + " theme", "Enter a theme", ui.ButtonSet.OK_CANCEL);
+  if (result.getSelectedButton() == ui.Button.OK) {
+    let newTheme = result.getResponseText();
+    if (newTheme === "") {
+      properties.deleteProperty('theme');
+    } else {
+      try {
+        let parsed = JSON.parse(newTheme);
+        checkTheme([], parsed);
+      } catch (e) {
+        ui.alert("Invalid theme: " + e.message);
+        return;
+      }
+      properties.setProperty('theme', newTheme);
+    }
+  }
+}
