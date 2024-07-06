@@ -2,8 +2,10 @@
 
 // So we can import this file in the other libraries.
 export {
+  THEME_PROPERTY_KEY,
   SegmentStyle,
-  Style, THEME_PROPERTY_KEY, Themer,
+  Style,
+  Themer,
   getModeList,
   newThemer,
   setTheme,
@@ -50,13 +52,13 @@ function checkRecord(path: Array<string>, value: any, check: (path: Array<string
   }
 }
 
-type Syntax = {
-  // The default style for the mode.
-  default? : StyleOrColor;
+type Mode = {
+  modeColor? : string;
+  style? : StyleOrColor;  // The default style for the mode.
   codeMirror? : Record<string, StyleOrColor>;
 }
 
-function checkSyntaxConfig(path: Array<string>, value: any): void {
+function checkMode(path: Array<string>, value: any): void {
   if (typeof value !== 'object') {
     throw new Error(`Invalid Syntax ${path.join('.')}: ${JSON.stringify(value)}`);
   }
@@ -66,14 +68,6 @@ function checkSyntaxConfig(path: Array<string>, value: any): void {
   if (value.syntax !== undefined) {
     checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
   }
-}
-
-interface Mode extends Syntax{
-  modeColor? : string;
-};
-
-function checkMode(path: Array<string>, value: any): void {
-  checkSyntaxConfig(path, value);
   if (value.modeColor !== undefined && typeof value.modeColor !== 'string') {
     throw new Error(`Invalid 'modeColor' in Mode ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
   }
@@ -240,8 +234,8 @@ class Themer {
     let style = mergeStyles(
       globalDefaultEntry,
       themeDefaultEntry,
-      globalModeEntry?.default,
-      themeModeEntry?.default
+      globalModeEntry?.style,
+      themeModeEntry?.style
     );
 
     let modeColor = themeModeEntry?.modeColor ?? globalModeEntry?.modeColor;
@@ -253,8 +247,8 @@ class Themer {
 
     let codeMirror = mergeCodeMirror(
       DEFAULT_THEME.codeMirror,
-      globalModeEntry?.codeMirror,
       this.theme.codeMirror,
+      globalModeEntry?.codeMirror,
       themeModeEntry?.codeMirror,
 
     );
