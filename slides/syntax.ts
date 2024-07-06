@@ -392,7 +392,7 @@ function colorizeSpans(shape : Shape) {
   let themer = getThemer();
   for (let i = spans.length - 1; i >= 0; i--) {
     let span = spans[i];
-    let rangeText = text.asString().substring(span.from + 1, span.to - 1)
+    let rangeText = text.asString().substring(span.from + 1, span.to)
     let style = themer.getCodeSpanStyle(rangeText);
     // We change the section with the back-ticks, and then remove the ticks afterwards.
     // This way we never have to deal with empty strings.
