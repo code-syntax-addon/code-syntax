@@ -24,7 +24,7 @@
           "description": "The default style for all code.",
           "$ref": "#/$defs/StyleOrColor"
         },
-        "syntax": {
+        "codeMirror": {
           "description": "The default syntax highlighting for code sections.",
           "$ref": "#/$defs/CodeMirror"
         },
@@ -93,6 +93,7 @@
       "additionalProperties": false
     },
     "Mode": {
+      "description": "The configuration for a specific language.",
       "type": "object",
       "allOf": [
         { "$ref": "#/$defs/Syntax" },
@@ -108,13 +109,14 @@
       ]
     },
     "Syntax": {
+      "description": "The syntax highlighting for a specific language.",
       "type": "object",
       "properties": {
         "default": {
           "description": "The default style for every element in this mode that doesn't have a more specific style.",
           "$ref": "#/$defs/StyleOrColor"
         },
-        "syntax": {
+        "codeMirror": {
           "description": "The syntax highlighting for this mode.",
           "$ref": "#/$defs/CodeMirror"
         }
