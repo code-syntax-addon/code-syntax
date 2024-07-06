@@ -18,6 +18,7 @@ There are three primary functions accessible from the add-on menu:
 1. **Colorize**
 2. **Colorize selection as**
 3. **Change mode to**
+4. **Advanced**
 
 ---
 
@@ -95,6 +96,20 @@ If you now want to change the highlighting to Python, proceed as follows:
 
 This menu option does nothing if the cursor is not in a code section.
 
+#### Advanced
+
+The "Advanced" menu item allows you to change the default theme of the
+user, or to set the theme for the current document.
+
+See the [Themes](themes.html) page for more information on to create
+your own themes.
+
+The menu items in this section are:
+- Show themes: Shows the current configuration. One section for the
+  user's default theme and one for the document's theme.
+- Set document theme: Sets the theme for the current document.
+- Set user theme: Sets the default theme for the user.
+
 ## Google Slides
 
 The Code Syntax add-on for Google Slides allows you to write
@@ -115,6 +130,7 @@ There are four primary functions accessible from the add-on menu:
 1. **Colorize Slide**
 2. **Colorize selection as**
 3. **Change mode to**
+4. **Advanced**
 
 ---
 
@@ -190,3 +206,17 @@ If you now want to change the highlighting to Python, proceed as follows:
 |![Before](screens/support15.png) | ![After](screens/support16.png)|
 
 This menu option does nothing if the cursor is not in a code section.
+
+#### Advanced
+
+The "Advanced" menu item allows you to change the default theme of the
+user, or to set the theme for the current document.
+
+See the [Themes](themes.html) page for more information on to create
+your own themes.
+
+The menu items in this section are:
+- Show themes: Shows the current configuration. One section for the
+  user's default theme and one for the document's theme.
+- Set document theme: Sets the theme for the current document.
+- Set user theme: Sets the default theme for the user.

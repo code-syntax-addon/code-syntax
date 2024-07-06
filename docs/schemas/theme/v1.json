@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-2020-12/schema",
+  "$id": "https://code-syntax-addon.github.io/code-syntax/schemas/theme/v1.json",
+  "title": "Code Syntax Theme",
+  "description": "Theme format for the code syntax highlighting add-on.",
+  "type": "object",
+  "$ref": "#/$defs/Theme",
+  "$defs": {
+    "Theme": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "format": "uri",
+          "const": "https://code-syntax-addon.github.io/code-syntax/schemas/theme/v1.json"
+        },
+        "$comment": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "default": {
+          "description": "The default style for all code.",
+          "$ref": "#/$defs/StyleOrColor"
+        },
+        "codeMirror": {
+          "description": "The default syntax highlighting for code sections.",
+          "$ref": "#/$defs/CodeMirror"
+        },
+        "spans": {
+          "description": "The style for span elements.",
+          "type": "object",
+          "propertyNames": {
+            "enum": ["path", "number", "string", "keyword", "ipv4", "rest"]
+          },
+          "additionalProperties": { "$ref": "#/$defs/StyleOrColor" }
+        },
+        "modes": {
+          "description": "Configurations for specific languages.",
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "none", "toit", "dart", "shell", "go", "python", "yaml", "c", "c++", "css",
+              "js", "jsx", "ts", "json", "java", "kotlin", "c#", "objective-c", "scala",
+              "html", "xml", "dockerfile", "julia", "rust", "r"
+            ]
+          },
+          "additionalProperties": { "$ref": "#/$defs/Mode" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StyleOrColor": {
+      "description": "The style for a specific element. Either a color string a style object.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        {
+          "$ref": "#/$defs/Style"
+        }
+      ]
+    },
+    "Style": {
+      "description": "A style object.",
+      "type": "object",
+      "properties": {
+        "fontFamily": {
+          "description": "The font family for the element.",
+          "type": "string"
+        },
+        "italic": {
+          "description": "Whether the element should be italic.",
+          "type": "boolean"
+        },
+        "bold": {
+          "description": "Whether the element should be bold.",
+          "type": "boolean"
+        },
+        "foreground": {
+          "description": "The color of the text.",
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "background": {
+          "description": "The background color.",
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Mode": {
+      "description": "The configuration for a specific language.",
+      "type": "object",
+      "properties": {
+        "modeColor": {
+          "description": "The background color for code blocks. Must be unique per mode.",
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "style": {
+        "description": "The style for every element that doesn't have a code-mirror style.",
+        "$ref": "#/$defs/StyleOrColor"
+      },
+      "codeMirror": {
+        "description": "The syntax highlighting for this mode.",
+        "$ref": "#/$defs/CodeMirror"
+      }
+    },
+    "CodeMirror": {
+      "description": "The syntax highlighting for code sections. The keys are the CodeMirror classes.",
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "header", "quote", "negative", "positive", "strong", "em", "keyword",
+          "atom", "number", "def", "variable", "punctuation", "property",
+          "operator", "variable-2", "variable-3", "type", "comment", "string",
+          "string-2", "meta", "qualifier", "builtin", "bracket", "tag",
+          "attribute", "hr", "link", "error", "invalidchar"
+        ]
+      },
+      "additionalProperties": { "$ref": "#/$defs/StyleOrColor" }
+    }
+  }
+}
