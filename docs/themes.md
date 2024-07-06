@@ -27,3 +27,14 @@ If you want to remove the custom theme, set the theme-string to an empty string.
 
 ## Creating Themes
 
+Themes follow the [theme json-schema](schemas/theme/v1.json). Vscode, and other
+editors, automatically provide code completion and diagnostics as soon as the
+theme file has an entry `$schema` with the value
+`https://code-syntax-addon.github.io/code-syntax/schemas/theme/v1.json`:
+
+```json
+{
+  "$schema": "https://code-syntax-addon.github.io/code-syntax/schemas/theme/v1.json",
+}
+```
+
