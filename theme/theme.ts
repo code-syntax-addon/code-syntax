@@ -2,14 +2,12 @@
 
 // So we can import this file in the other libraries.
 export {
-  DEFAULT_THEME,
   SegmentStyle,
-  Style,
-  Themer,
+  Style, THEME_PROPERTY_KEY, Themer,
   getModeList,
-  getThemer,
-  setDocumentTheme,
-  setUserTheme,
+  newThemer,
+  setTheme,
+  showThemes
 };
 
 // Maps the mode to the CodeMirror mode, if the name is not the same.
@@ -165,6 +163,18 @@ function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
   return result;
 }
 
+function mergeSyntax(...syntax : (Record<string, StyleConfig> | undefined)[]) : Record<string, StyleConfig> {
+  let result : Record<string, StyleConfig> = {};
+  for (let i = 0; i < syntax.length; i++) {
+    let s = syntax[i];
+    if (!s) continue;
+    for (let key in s) {
+      result[key] = s[key];
+    }
+  }
+  return result;
+}
+
 class SegmentStyle {
   public mode : string;
   public codeMirrorMode : string;
@@ -212,26 +222,43 @@ class Themer {
   }
 
   private getDefaultStyle() : Style {
-    return this.toStyle(this.theme.default ?? DEFAULT_THEME.default!);
+    return mergeStyles(DEFAULT_THEME.default, this.theme.default);
   }
 
   public getSegmentStyle(mode : string) : SegmentStyle {
     let cached = this.cachedSegmentStyles[mode];
     if (cached) return cached;
 
-    let entry = this.theme.modes?.[mode];
-    if (!entry) {
-      // Use the default style.
-      entry = DEFAULT_THEME.modes![mode];
-    }
-    if (!entry) {
-      return new SegmentStyle(mode, "", "#FFFFFF", this.getDefaultStyle());
+    let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
+
+    let globalDefaultEntry = DEFAULT_THEME.default;
+    let themeDefaultEntry = this.theme.default;
+
+    let globalModeEntry = DEFAULT_THEME.modes![mode];
+    let themeModeEntry = this.theme?.modes?.[mode];
+
+    let style = mergeStyles(
+      globalDefaultEntry,
+      themeDefaultEntry,
+      globalModeEntry?.default,
+      themeModeEntry?.default
+    );
+
+    let modeColor = themeModeEntry?.modeColor ?? globalModeEntry?.modeColor;
+
+    if (!modeColor) {
+      // Shouldn't happen.
+      return new SegmentStyle(mode, "", "#FFFFFF", style);
     }
 
-    let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
-    let defaultStyle : Style = mergeStyles(this.getDefaultStyle(), entry.default);
-    let syntax = entry.syntax ?? this.theme.syntax;
-    let result = new SegmentStyle(mode, cmMode, entry.modeColor, defaultStyle, syntax);
+    let syntax = mergeSyntax(
+      DEFAULT_THEME.syntax,
+      globalModeEntry?.syntax,
+      this.theme.syntax,
+      themeModeEntry?.syntax,
+
+    );
+    let result = new SegmentStyle(mode, cmMode, modeColor, style, syntax);
     this.cachedSegmentStyles[mode] = result;
     return result;
   }
@@ -369,41 +396,36 @@ const DEFAULT_THEME : Theme = {
   modes: DEFAULT_STYLES,
 }
 
-let themer : Themer | null = null;
+const THEME_PROPERTY_KEY = "theme";
 
-function getThemer() : Themer {
-  if (!themer) {
-    let documentTheme = PropertiesService.getDocumentProperties().getProperty('theme');
-    if (documentTheme) {
-      themer = new Themer(JSON.parse(documentTheme));
-    } else {
-      let userTheme = PropertiesService.getUserProperties().getProperty('theme');
-      if (userTheme) {
-        themer = new Themer(JSON.parse(userTheme));
-      } else {
-        themer = new Themer(DEFAULT_THEME);
-      }
-    }
+function newThemer(documentTheme : string | null, userTheme : string | null) : Themer {
+  if (documentTheme) {
+    return new Themer(JSON.parse(documentTheme));
+  } else if (userTheme) {
+    return new Themer(JSON.parse(userTheme));
+  } else {
+    return new Themer(DEFAULT_THEME);
   }
-  return themer;
 }
 
-function setDocumentTheme() {
-  setTheme("document", PropertiesService.getDocumentProperties());
+function showThemes(
+    ui : GoogleAppsScript.Base.Ui,
+    documentTheme : string | null,
+    userTheme : string | null) {
+  if (!userTheme) userTheme = "<none>";
+  if (!documentTheme) documentTheme = "<none>";
+  let str = "User theme: " + userTheme + "\n";
+  str += "Document theme: " + documentTheme + "\n";
+  ui.alert(str);
 }
 
-function setUserTheme() {
-  setTheme("user", PropertiesService.getUserProperties());
-}
-
-function setTheme(name : string, properties : GoogleAppsScript.Properties.Properties) {
-  let ui = DocumentApp.getUi();
-  let result = ui.prompt("Set " + name + " theme", "Enter a theme", ui.ButtonSet.OK_CANCEL);
+// Properties need to be set by the main script.
+// We thus take a 'setter' as argument.
+function setTheme(ui : GoogleAppsScript.Base.Ui, type : string, setter : (newTheme : string) => void) {
+  let result = ui.prompt("Set " + type + " theme", "Enter a theme", ui.ButtonSet.OK_CANCEL);
   if (result.getSelectedButton() == ui.Button.OK) {
     let newTheme = result.getResponseText();
-    if (newTheme === "") {
-      properties.deleteProperty('theme');
-    } else {
+    if (newTheme !== "") {
       try {
         let parsed = JSON.parse(newTheme);
         checkTheme([], parsed);
@@ -411,7 +433,7 @@ function setTheme(name : string, properties : GoogleAppsScript.Properties.Proper
         ui.alert("Invalid theme: " + e.message);
         return;
       }
-      properties.setProperty('theme', newTheme);
     }
+    setter(newTheme);
   }
 }

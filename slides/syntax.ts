@@ -54,6 +54,32 @@ function onOpen(e) {
   menu.addToUi();
 }
 
+function showThemes() {
+  theme.showThemes(
+      SlidesApp.getUi(),
+      PropertiesService.getDocumentProperties().getProperty(theme.THEME_PROPERTY_KEY),
+      PropertiesService.getUserProperties().getProperty(theme.THEME_PROPERTY_KEY)
+    );
+}
+
+function setDocumentTheme() {
+  setTheme("document", PropertiesService.getDocumentProperties());
+}
+
+function setUserTheme() {
+  setTheme("user", PropertiesService.getUserProperties());
+}
+
+function setTheme(type : string, properties : GoogleAppsScript.Properties.Properties) {
+  theme.setTheme(SlidesApp.getUi(), type, (newTheme : string) => {
+    if (newTheme === "") {
+      properties.deleteProperty(theme.THEME_PROPERTY_KEY);
+    } else {
+      properties.setProperty(theme.THEME_PROPERTY_KEY, newTheme);
+    }
+  });
+}
+
 function showLicense() {
   let str = "This project is made possible by open source software:\n";
   str += "\n";
@@ -105,12 +131,24 @@ class CodeSpan {
 let MODE_TO_STYLE : Map<string, theme.SegmentStyle> | null = null;
 let COLOR_TO_MODE : Map<string, string> | null = null;
 
+let themer : theme.Themer | null = null;
+
+function getThemer() : theme.Themer {
+  if (!themer) {
+    let documentTheme = PropertiesService.getDocumentProperties().getProperty(theme.THEME_PROPERTY_KEY);
+    let userTheme = PropertiesService.getUserProperties().getProperty(theme.THEME_PROPERTY_KEY);
+    themer = theme.newThemer(documentTheme, userTheme);
+  }
+  return themer;
+}
+
 function setMaps() {
   if (MODE_TO_STYLE) return;
   COLOR_TO_MODE = new Map<string, string>();
   MODE_TO_STYLE = new Map<string, theme.SegmentStyle>();
+  let themer = getThemer();
   for (let mode of theme.getModeList()) {
-    let segmentStyle = theme.getThemer().getSegmentStyle(mode);
+    let segmentStyle = themer.getSegmentStyle(mode);
     let color = segmentStyle.background;
     // We don't want to deal with different casing later on.
     COLOR_TO_MODE.set(color.toLowerCase(), mode);
@@ -351,10 +389,11 @@ function colorizeSpans(shape : Shape) {
   }
   // Handle the spans from the last to the first, so we don't change the positions
   // in the wrong order.
+  let themer = getThemer();
   for (let i = spans.length - 1; i >= 0; i--) {
     let span = spans[i];
     let rangeText = text.asString().substring(span.from + 1, span.to - 1)
-    let style = theme.getThemer().getCodeSpanStyle(rangeText);
+    let style = themer.getCodeSpanStyle(rangeText);
     // We change the section with the back-ticks, and then remove the ticks afterwards.
     // This way we never have to deal with empty strings.
     let range = text.getRange(span.from, span.to);

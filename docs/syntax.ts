@@ -53,21 +53,36 @@ function onOpen(e) {
   menu.addToUi();
 }
 
+function showThemes() {
+  theme.showThemes(
+      DocumentApp.getUi(),
+      PropertiesService.getDocumentProperties().getProperty(theme.THEME_PROPERTY_KEY),
+      PropertiesService.getUserProperties().getProperty(theme.THEME_PROPERTY_KEY)
+    );
+}
+
+function setDocumentTheme() {
+  setTheme("document", PropertiesService.getDocumentProperties());
+}
+
+function setUserTheme() {
+  setTheme("user", PropertiesService.getUserProperties());
+}
+
+function setTheme(type : string, properties : GoogleAppsScript.Properties.Properties) {
+  theme.setTheme(DocumentApp.getUi(), type, (newTheme : string) => {
+    if (newTheme === "") {
+      properties.deleteProperty(theme.THEME_PROPERTY_KEY);
+    } else {
+      properties.setProperty(theme.THEME_PROPERTY_KEY, newTheme);
+    }
+  });
+}
+
 function showLicense() {
   let str = "This project is made possible by open source software:\n"
   str += "\n"
   str += thirdPartyLicenses
-  let ui = DocumentApp.getUi();
-  ui.alert(str);
-}
-
-function showThemes() {
-  let userTheme = PropertiesService.getUserProperties().getProperty('theme');
-  let documentTheme = PropertiesService.getDocumentProperties().getProperty('theme');
-  if (!userTheme) userTheme = "<none>";
-  if (!documentTheme) documentTheme = "<none>";
-  let str = "User theme: " + userTheme + "\n";
-  str += "Document theme: " + documentTheme + "\n";
   let ui = DocumentApp.getUi();
   ui.alert(str);
 }
@@ -85,12 +100,24 @@ type RangeElement = docs.RangeElement;
 let MODE_TO_STYLE : Map<string, theme.SegmentStyle> | null = null;
 let COLOR_TO_MODE : Map<string, string> | null = null;
 
+let themer : theme.Themer | null = null;
+
+function getThemer() : theme.Themer {
+  if (!themer) {
+    let documentTheme = PropertiesService.getDocumentProperties().getProperty(theme.THEME_PROPERTY_KEY);
+    let userTheme = PropertiesService.getUserProperties().getProperty(theme.THEME_PROPERTY_KEY);
+    themer = theme.newThemer(documentTheme, userTheme);
+  }
+  return themer;
+}
+
 function setMaps() {
   if (MODE_TO_STYLE) return;
   COLOR_TO_MODE = new Map<string, string>();
   MODE_TO_STYLE = new Map<string, theme.SegmentStyle>();
+  let themer = getThemer();
   for (let mode of theme.getModeList()) {
-    let segmentStyle = theme.getThemer().getSegmentStyle(mode);
+    let segmentStyle = themer.getSegmentStyle(mode);
     let color = segmentStyle.background;
     // We don't want to deal with different casing later on.
     COLOR_TO_MODE.set(color.toLowerCase(), mode);
@@ -644,7 +671,7 @@ function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
 function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
   let text = para.editAsText();
   let str = para.getText().substring(startTick + 1, endTick);
-  let style = theme.getThemer().getCodeSpanStyle(str);
+  let style = getThemer().getCodeSpanStyle(str);
   applyStyle(text, startTick, endTick, style);
 
   // Delete the end-tick first, as removing the start-tick first, would change the
