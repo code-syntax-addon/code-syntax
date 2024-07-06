@@ -2,10 +2,8 @@
 
 // So we can import this file in the other libraries.
 export {
-  THEME_PROPERTY_KEY,
   SegmentStyle,
-  Style,
-  Themer,
+  Style, THEME_PROPERTY_KEY, Themer,
   getModeList,
   newThemer,
   setTheme,
@@ -113,7 +111,7 @@ function checkStyleOrColor(path: Array<string>, value: any): void {
 type Theme = {
   default?: StyleOrColor;
   codeMirror?: Record<string, StyleOrColor>;
-  spanColors?: Record<string, StyleOrColor>;
+  spans?: Record<string, StyleOrColor>;
   modes?: Record<string, Mode>;
 };
 
@@ -127,8 +125,8 @@ function checkTheme(path: Array<string>, value: any): void {
   if (value.syntax !== undefined) {
     checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
   }
-  if (value.spanColors !== undefined) {
-    checkRecord([...path, 'spanColors'], value.spanColors, checkStyleOrColor);
+  if (value.spans !== undefined) {
+    checkRecord([...path, 'spans'], value.spans, checkStyleOrColor);
   }
   if (value.modes !== undefined) {
     checkRecord([...path, 'modes'], value.modes, checkMode);
@@ -263,8 +261,8 @@ class Themer {
       let entry = SPAN_REGEX[i]
       let re : RegExp = entry[0] as RegExp;
       let spanName : string = entry[1] as string;
-      let style = this.theme.spanColors?.[spanName]
-      if (!style) style = DEFAULT_THEME.spanColors![spanName];
+      let style = this.theme.spans?.[spanName]
+      if (!style) style = DEFAULT_THEME.spans![spanName];
       if (!style) continue;  // Should not happen.
       if (re.test(text)) {
         return mergeStyles(defaultStyle, style);
@@ -297,7 +295,7 @@ const GLOBAL_DEFAULT_STYLE = {
   foreground: "#000000",
 };
 
-const DEFAULT_SPAN_COLORS : Record<string, StyleOrColor> = {
+const DEFAULT_SPAN_STYLES : Record<string, StyleOrColor> = {
   "path": "#3c003c",
   "number": "#008c0c",
   "string": "#38008c",
@@ -386,7 +384,7 @@ const DEFAULT_COLORS : Record<string, StyleOrColor> = {
 const DEFAULT_THEME : Theme = {
   default: GLOBAL_DEFAULT_STYLE,
   codeMirror: DEFAULT_COLORS,
-  spanColors: DEFAULT_SPAN_COLORS,
+  spans: DEFAULT_SPAN_STYLES,
   modes: DEFAULT_STYLES,
 }
 
