@@ -18,3 +18,6 @@ Overrides the default font for code to "Courier New".
   }
 }
 ```
+
+![Courier New](theme-screens/font-courier-new.png)
+
