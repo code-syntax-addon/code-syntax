@@ -2,10 +2,8 @@
 
 // So we can import this file in the other libraries.
 export {
-  THEME_PROPERTY_KEY,
   SegmentStyle,
-  Style,
-  Themer,
+  Style, THEME_PROPERTY_KEY, Themer,
   getModeList,
   newThemer,
   setTheme,
@@ -52,15 +50,15 @@ function checkRecord(path: Array<string>, value: any, check: (path: Array<string
   }
 }
 
-type SyntaxConfig = {
+type Syntax = {
   // The default style for the mode.
-  "default"? : StyleOrColor;
-  syntax? : Record<string, StyleOrColor>;
+  default? : StyleOrColor;
+  codeMirror? : Record<string, StyleOrColor>;
 }
 
 function checkSyntaxConfig(path: Array<string>, value: any): void {
   if (typeof value !== 'object') {
-    throw new Error(`Invalid SyntaxConfig ${path.join('.')}: ${JSON.stringify(value)}`);
+    throw new Error(`Invalid Syntax ${path.join('.')}: ${JSON.stringify(value)}`);
   }
   if (value.default !== undefined) {
     checkStyleOrColor([...path, 'default'], value.default);
@@ -70,14 +68,14 @@ function checkSyntaxConfig(path: Array<string>, value: any): void {
   }
 }
 
-interface ModeConfig extends SyntaxConfig{
+interface Mode extends Syntax{
   modeColor? : string;
 };
 
-function checkModeConfig(path: Array<string>, value: any): void {
+function checkMode(path: Array<string>, value: any): void {
   checkSyntaxConfig(path, value);
   if (value.modeColor !== undefined && typeof value.modeColor !== 'string') {
-    throw new Error(`Invalid 'modeColor' in ModeConfig ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
+    throw new Error(`Invalid 'modeColor' in Mode ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
   }
 }
 
@@ -120,9 +118,9 @@ function checkStyleOrColor(path: Array<string>, value: any): void {
 
 type Theme = {
   default?: StyleOrColor;
-  syntax?: Record<string, StyleOrColor>;
+  codeMirror?: Record<string, StyleOrColor>;
   spanColors?: Record<string, StyleOrColor>;
-  modes?: Record<string, ModeConfig>;
+  modes?: Record<string, Mode>;
 };
 
 function checkTheme(path: Array<string>, value: any): void {
@@ -139,7 +137,7 @@ function checkTheme(path: Array<string>, value: any): void {
     checkRecord([...path, 'spanColors'], value.spanColors, checkStyleOrColor);
   }
   if (value.modes !== undefined) {
-    checkRecord([...path, 'modes'], value.modes, checkModeConfig);
+    checkRecord([...path, 'modes'], value.modes, checkMode);
   }
 }
 
@@ -165,13 +163,13 @@ function mergeStyles(...styles : (StyleOrColor | undefined)[]) : Style {
   return result;
 }
 
-function mergeSyntax(...syntax : (Record<string, StyleOrColor> | undefined)[]) : Record<string, StyleOrColor> {
+function mergeCodeMirror(...cmirrors : (Record<string, StyleOrColor> | undefined)[]) : Record<string, StyleOrColor> {
   let result : Record<string, StyleOrColor> = {};
-  for (let i = 0; i < syntax.length; i++) {
-    let s = syntax[i];
-    if (!s) continue;
-    for (let key in s) {
-      result[key] = s[key];
+  for (let i = 0; i < cmirrors.length; i++) {
+    let cmirror = cmirrors[i];
+    if (!cmirror) continue;
+    for (let key in cmirror) {
+      result[key] = cmirror[key];
     }
   }
   return result;
@@ -253,14 +251,14 @@ class Themer {
       return new SegmentStyle(mode, "", "#FFFFFF", style);
     }
 
-    let syntax = mergeSyntax(
-      DEFAULT_THEME.syntax,
-      globalModeEntry?.syntax,
-      this.theme.syntax,
-      themeModeEntry?.syntax,
+    let codeMirror = mergeCodeMirror(
+      DEFAULT_THEME.codeMirror,
+      globalModeEntry?.codeMirror,
+      this.theme.codeMirror,
+      themeModeEntry?.codeMirror,
 
     );
-    let result = new SegmentStyle(mode, cmMode, modeColor, style, syntax);
+    let result = new SegmentStyle(mode, cmMode, modeColor, style, codeMirror);
     this.cachedSegmentStyles[mode] = result;
     return result;
   }
@@ -314,7 +312,7 @@ const DEFAULT_SPAN_COLORS : Record<string, StyleOrColor> = {
   "rest": "#000c8c",
 };
 
-const DEFAULT_STYLES : Record<string, ModeConfig> = {
+const DEFAULT_STYLES : Record<string, Mode> = {
   "none" : { modeColor: "#f7f7f7" },  // No specified mode.
   "toit" : { modeColor: "#f2f8ff" },
   "dart" : { modeColor: "#f7fff7" },
@@ -393,7 +391,7 @@ const DEFAULT_COLORS : Record<string, StyleOrColor> = {
 
 const DEFAULT_THEME : Theme = {
   default: GLOBAL_DEFAULT_STYLE,
-  syntax: DEFAULT_COLORS,
+  codeMirror: DEFAULT_COLORS,
   spanColors: DEFAULT_SPAN_COLORS,
   modes: DEFAULT_STYLES,
 }
