@@ -3,8 +3,11 @@
 // So we can import this file in the other libraries.
 export {
   SegmentStyle,
-  Style,
-  Themer, themer
+  Style, THEME_PROPERTY_KEY, Themer,
+  getModeList,
+  newThemer,
+  setTheme,
+  showThemes
 };
 
 // Maps the mode to the CodeMirror mode, if the name is not the same.
@@ -38,22 +41,35 @@ const SPAN_REGEX = [
   [/.*/, "rest"],
 ]
 
-type SyntaxConfig = {
-  // The default style for the mode.
-  "default"? : StyleConfig;
-  syntax? : Record<string, StyleConfig>;
+function checkRecord(path: Array<string>, value: any, check: (path: Array<string>, value: any) => void): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Record ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  for (const key in value) {
+    check([...path, key], value[key]);
+  }
 }
 
-interface ModeConfig extends SyntaxConfig{
-  modeColor : string;
-};
+type Mode = {
+  modeColor? : string;
+  style? : StyleOrColor;  // The default style for the mode.
+  codeMirror? : Record<string, StyleOrColor>;
+}
 
-type Theme = {
-  "default": StyleConfig;
-  "syntax": Record<string, StyleConfig>;
-  "span-colors": Record<string, StyleConfig>;
-  "modes": Record<string, ModeConfig>;
-};
+function checkMode(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Syntax ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.default !== undefined) {
+    checkStyleOrColor([...path, 'default'], value.default);
+  }
+  if (value.syntax !== undefined) {
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
+  }
+  if (value.modeColor !== undefined && typeof value.modeColor !== 'string') {
+    throw new Error(`Invalid 'modeColor' in Mode ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
+  }
+}
 
 // The colors are either strings (representing the color), or objects.
 type Style = {
@@ -64,10 +80,62 @@ type Style = {
   background? : string;
 }
 
+function checkStyle(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Style ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.fontFamily !== undefined && typeof value.fontFamily !== 'string') {
+    throw new Error(`Invalid 'fontFamily' in Style ${path.join('.')}: ${JSON.stringify(value.fontFamily)}`);
+  }
+  if (value.italic !== undefined && typeof value.italic !== 'boolean') {
+    throw new Error(`Invalid 'italic' in Style ${path.join('.')}: ${JSON.stringify(value.italic)}`);
+  }
+  if (value.bold !== undefined && typeof value.bold !== 'boolean') {
+    throw new Error(`Invalid 'bold' in Style ${path.join('.')}: ${JSON.stringify(value.bold)}`);
+  }
+  if (value.foreground !== undefined && typeof value.foreground !== 'string') {
+    throw new Error(`Invalid 'foreground' in Style ${path.join('.')}: ${JSON.stringify(value.foreground)}`);
+  }
+  if (value.background !== undefined && typeof value.background !== 'string') {
+    throw new Error(`Invalid 'background' in Style ${path.join('.')}: ${JSON.stringify(value.background)}`);
+  }
+}
+
+type StyleOrColor = string | Style;
+
+function checkStyleOrColor(path: Array<string>, value: any): void {
+  if (typeof value === 'string') return;
+  checkStyle(path, value);
+}
+
+type Theme = {
+  default?: StyleOrColor;
+  codeMirror?: Record<string, StyleOrColor>;
+  spans?: Record<string, StyleOrColor>;
+  modes?: Record<string, Mode>;
+};
+
+function checkTheme(path: Array<string>, value: any): void {
+  if (typeof value !== 'object') {
+    throw new Error(`Invalid Theme ${path.join('.')}: ${JSON.stringify(value)}`);
+  }
+  if (value.default !== undefined) {
+    checkStyleOrColor([...path, 'default'], value.default);
+  }
+  if (value.syntax !== undefined) {
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
+  }
+  if (value.spans !== undefined) {
+    checkRecord([...path, 'spans'], value.spans, checkStyleOrColor);
+  }
+  if (value.modes !== undefined) {
+    checkRecord([...path, 'modes'], value.modes, checkMode);
+  }
+}
 
 // Combines the styles, and returns a new style.
 // The most precise style must be last.
-function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
+function mergeStyles(...styles : (StyleOrColor | undefined)[]) : Style {
   let result : Style = {};
   for (let i = 0; i < styles.length; i++) {
     let style = styles[i];
@@ -87,19 +155,31 @@ function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
   return result;
 }
 
+function mergeCodeMirror(...cmirrors : (Record<string, StyleOrColor> | undefined)[]) : Record<string, StyleOrColor> {
+  let result : Record<string, StyleOrColor> = {};
+  for (let i = 0; i < cmirrors.length; i++) {
+    let cmirror = cmirrors[i];
+    if (!cmirror) continue;
+    for (let key in cmirror) {
+      result[key] = cmirror[key];
+    }
+  }
+  return result;
+}
+
 class SegmentStyle {
   public mode : string;
   public codeMirrorMode : string;
   public background : string;
   public defaultStyle : Style;
-  private syntax? : Record<string, StyleConfig>;
+  private syntax? : Record<string, StyleOrColor>;
 
   public constructor(
       mode : string,
       cmMode : string,
       background : string,
       defaultStyle : Style,
-      syntax? : Record<string, StyleConfig>,
+      syntax? : Record<string, StyleOrColor>,
       ) {
     this.mode = mode;
     this.codeMirrorMode = cmMode;
@@ -126,51 +206,75 @@ class Themer {
     this.theme = theme;
   }
 
-  private toStyle(config : StyleConfig) : Style {
+  private toStyle(config : StyleOrColor) : Style {
     if (typeof config == "string") {
       return { foreground: config };
     }
     return config;
   }
 
+  private getDefaultStyle() : Style {
+    return mergeStyles(DEFAULT_THEME.default, this.theme.default);
+  }
+
   public getSegmentStyle(mode : string) : SegmentStyle {
     let cached = this.cachedSegmentStyles[mode];
     if (cached) return cached;
 
-    let entry = this.theme.modes[mode];
-    if (!entry) {
-      return new SegmentStyle(mode, "", "#FFFFFF", this.toStyle(this.theme.default), undefined);
+    let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
+
+    let globalDefaultEntry = DEFAULT_THEME.default;
+    let themeDefaultEntry = this.theme.default;
+
+    let globalModeEntry = DEFAULT_THEME.modes![mode];
+    let themeModeEntry = this.theme?.modes?.[mode];
+
+    let style = mergeStyles(
+      globalDefaultEntry,
+      themeDefaultEntry,
+      globalModeEntry?.style,
+      themeModeEntry?.style
+    );
+
+    let modeColor = themeModeEntry?.modeColor ?? globalModeEntry?.modeColor;
+
+    if (!modeColor) {
+      // Shouldn't happen.
+      return new SegmentStyle(mode, "", "#FFFFFF", style);
     }
 
-    let cmMode : string = MODE_TO_CODE_MIRROR[mode] ?? mode;
-    let defaultStyle : Style = mergeStyles(this.theme.default, entry.default);
-    let syntax = entry.syntax ?? this.theme.syntax;
-    let result = new SegmentStyle(mode, cmMode, entry.modeColor, defaultStyle, syntax);
+    let codeMirror = mergeCodeMirror(
+      DEFAULT_THEME.codeMirror,
+      this.theme.codeMirror,
+      globalModeEntry?.codeMirror,
+      themeModeEntry?.codeMirror,
+
+    );
+    let result = new SegmentStyle(mode, cmMode, modeColor, style, codeMirror);
     this.cachedSegmentStyles[mode] = result;
     return result;
   }
 
   public getCodeSpanStyle(text : string) : Style {
-    let defaultStyle = this.theme.default;
+    let defaultStyle = this.getDefaultStyle();
     for (let i = 0; i < SPAN_REGEX.length; i++) {
       let entry = SPAN_REGEX[i]
       let re : RegExp = entry[0] as RegExp;
       let spanName : string = entry[1] as string;
-      let style = this.theme["span-colors"][spanName]
+      let style = this.theme.spans?.[spanName]
+      if (!style) style = DEFAULT_THEME.spans![spanName];
       if (!style) continue;  // Should not happen.
       if (re.test(text)) {
         return mergeStyles(defaultStyle, style);
       }
     }
-    return this.toStyle(defaultStyle);
-  }
-
-  public getModeList() : Array<string> {
-    return Object.keys(DEFAULT_STYLES);
+    return defaultStyle;
   }
 }
 
-type StyleConfig = string | Style;
+function getModeList() : Array<string> {
+  return Object.keys(DEFAULT_STYLES);
+}
 
 // We have the following hierarchy. Styles are merged from top to bottom, with
 // the last style being the most precise.
@@ -191,7 +295,7 @@ const GLOBAL_DEFAULT_STYLE = {
   foreground: "#000000",
 };
 
-const DEFAULT_SPAN_COLORS : Record<string, StyleConfig> = {
+const DEFAULT_SPAN_STYLES : Record<string, StyleOrColor> = {
   "path": "#3c003c",
   "number": "#008c0c",
   "string": "#38008c",
@@ -200,7 +304,7 @@ const DEFAULT_SPAN_COLORS : Record<string, StyleConfig> = {
   "rest": "#000c8c",
 };
 
-const DEFAULT_STYLES : Record<string, ModeConfig> = {
+const DEFAULT_STYLES : Record<string, Mode> = {
   "none" : { modeColor: "#f7f7f7" },  // No specified mode.
   "toit" : { modeColor: "#f2f8ff" },
   "dart" : { modeColor: "#f7fff7" },
@@ -228,7 +332,7 @@ const DEFAULT_STYLES : Record<string, ModeConfig> = {
   "r": { modeColor: "#f3f3ff" },
 };
 
-const DEFAULT_COLORS : Record<string, StyleConfig> = {
+const DEFAULT_COLORS : Record<string, StyleOrColor> = {
   "header": {
     bold: true,
     foreground: "#0000ff",
@@ -278,10 +382,50 @@ const DEFAULT_COLORS : Record<string, StyleConfig> = {
 };
 
 const DEFAULT_THEME : Theme = {
-  "default": GLOBAL_DEFAULT_STYLE,
-  "syntax": DEFAULT_COLORS,
-  "span-colors": DEFAULT_SPAN_COLORS,
-  "modes": DEFAULT_STYLES,
+  default: GLOBAL_DEFAULT_STYLE,
+  codeMirror: DEFAULT_COLORS,
+  spans: DEFAULT_SPAN_STYLES,
+  modes: DEFAULT_STYLES,
 }
 
-const themer = new Themer(DEFAULT_THEME);
+const THEME_PROPERTY_KEY = "theme";
+
+function newThemer(documentTheme : string | null, userTheme : string | null) : Themer {
+  if (documentTheme) {
+    return new Themer(JSON.parse(documentTheme));
+  } else if (userTheme) {
+    return new Themer(JSON.parse(userTheme));
+  } else {
+    return new Themer(DEFAULT_THEME);
+  }
+}
+
+function showThemes(
+    ui : GoogleAppsScript.Base.Ui,
+    documentTheme : string | null,
+    userTheme : string | null) {
+  if (!userTheme) userTheme = "<none>";
+  if (!documentTheme) documentTheme = "<none>";
+  let str = "User theme: " + userTheme + "\n";
+  str += "Document theme: " + documentTheme + "\n";
+  ui.alert(str);
+}
+
+// Properties need to be set by the main script.
+// We thus take a 'setter' as argument.
+function setTheme(ui : GoogleAppsScript.Base.Ui, type : string, setter : (newTheme : string) => void) {
+  let result = ui.prompt("Set " + type + " theme", "Enter a theme", ui.ButtonSet.OK_CANCEL);
+  if (result.getSelectedButton() == ui.Button.OK) {
+    let newTheme = result.getResponseText();
+    if (newTheme !== "") {
+      try {
+        let parsed = JSON.parse(newTheme);
+        checkTheme([], parsed);
+      } catch (e) {
+        ui.alert("Invalid theme: " + e.message);
+        return;
+      }
+    }
+    setter(newTheme);
+  }
+}
