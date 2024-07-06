@@ -25,6 +25,11 @@ theme-string into the text box.
 
 If you want to remove the custom theme, set the theme-string to an empty string.
 
+If a new theme changes a mode color (the background color of a code block),
+the add-on will not recognize old code blocks with the old mode color anymore.
+You will need to re-colorize these code blocks (using `Change Mode to` in
+the add-on menu) to apply the new mode color.
+
 ## Creating Themes
 
  Themes are defined using JSON and follow a hierarchical structure, allowing
@@ -46,7 +51,7 @@ A theme consists of several main sections:
 
 1. `default`: Defines the default style for all code.
 2. `codeMirror`: Specifies syntax highlighting for code sections.
-3. `spanColors`: Defines styles for inline code spans.
+3. `spans`: Defines styles for inline code spans.
 4. `modes`: Contains configurations for specific programming languages. Each mode
    can have:
    - `modeColor`: Background color for code blocks (must be unique per mode)
@@ -108,8 +113,8 @@ When styling inline code spans, the system uses a very similar approach:
    theme for the full list of supported categories.
 
 2. Then, it looks for a matching style in this order:
-   - First, in the `spanColors` section of your custom theme.
-   - If not found, it checks the `spanColors` section of the default theme.
+   - First, in the `spans` section of your custom theme.
+   - If not found, it checks the `spans` section of the default theme.
    - If still not found, it uses the custom theme's `default` style.
    - If that's not found, it uses the default theme's `default` style.
 
@@ -160,16 +165,166 @@ To change the background color for Python code blocks, you can use the `modeColo
 {
   "modes": {
     "python": {
-      "modeColor": "#f0f8ff"
+      "modeColor": "#f7fff8"
     }
   }
 }
 ```
 
-This will set a light blue background for all Python code blocks.
+This will set a light green background for all Python code blocks.
+
+Remember that the `modeColor` must be unique for each mode.
 
 ### Contributing Your Theme
 
 We encourage users to share their custom themes with the community. If
 you've created a theme you're proud of, please consider submitting it
 as a pull request to our [theme gallery](theme-gallery.html).
+
+### The Default Theme
+
+For reference, here is the default scheme:
+
+``` json
+{
+  "default": {
+    "fontFamily": "Roboto Mono",
+    "italic": false,
+    "bold": false,
+    "foreground": "#000000"
+  },
+  "codeMirror": {
+    "header": {
+      "bold": true,
+      "foreground": "#0000ff"
+    },
+    "quote": "#009000",
+    "negative": "#d04040",
+    "positive": "#209020",
+    "strong": {
+      "bold": true
+    },
+    "em": {
+      "italic": true
+    },
+    "keyword": {
+      "bold": true,
+      "foreground": "#700080"
+    },
+    "atom": "#201090",
+    "number": "#106040",
+    "def": "#0000f0",
+    "variable": "#1ab1cd",
+    "punctuation": "#0f5057",
+    "property": "#572000",
+    "operator": {
+      "bold": true,
+      "foreground": "#ee11ff"
+    },
+    "variable-2": "#0050a0",
+    "variable-3": "#008050",
+    "type": "#008050",
+    "comment": {
+      "italic": true,
+      "foreground": "#a05000"
+    },
+    "string": "#a01010",
+    "string-2": "#f05000",
+    "meta": "#505050",
+    "qualifier": "#505050",
+    "builtin": "#3000a0",
+    "bracket": "#909070",
+    "tag": "#107000",
+    "attribute": "#0000c0",
+    "hr": "#909090",
+    "link": "#0000c0",
+    "error": "#f00000",
+    "invalidchar": "#f00000"
+  },
+  "spans": {
+    "path": "#3c003c",
+    "number": "#008c0c",
+    "string": "#38008c",
+    "keyword": "#8c0008",
+    "ipv4": "#8c3028",
+    "rest": "#000c8c"
+  },
+  "modes": {
+    "none": {
+      "modeColor": "#f7f7f7"
+    },
+    "toit": {
+      "modeColor": "#f2f8ff"
+    },
+    "dart": {
+      "modeColor": "#f7fff7"
+    },
+    "shell": {
+      "modeColor": "#fff7f2"
+    },
+    "go": {
+      "modeColor": "#f7ffff"
+    },
+    "python": {
+      "modeColor": "#f3faff"
+    },
+    "yaml": {
+      "modeColor": "#f3fbfe"
+    },
+    "c": {
+      "modeColor": "#fffbf6"
+    },
+    "c++": {
+      "modeColor": "#fffbf7"
+    },
+    "css": {
+      "modeColor": "#fffdf5"
+    },
+    "js": {
+      "modeColor": "#f8f8ff"
+    },
+    "jsx": {
+      "modeColor": "#f8f9ff"
+    },
+    "ts": {
+      "modeColor": "#f8f8fe"
+    },
+    "json": {
+      "modeColor": "#f2fbfe"
+    },
+    "java": {
+      "modeColor": "#fffff7"
+    },
+    "kotlin": {
+      "modeColor": "#f3f9ff"
+    },
+    "c#": {
+      "modeColor": "#fffff6"
+    },
+    "objective-c": {
+      "modeColor": "#f5f6ff"
+    },
+    "scala": {
+      "modeColor": "#fffff5"
+    },
+    "html": {
+      "modeColor": "#fffdf4"
+    },
+    "xml": {
+      "modeColor": "#fffef4"
+    },
+    "dockerfile": {
+      "modeColor": "#fffef5"
+    },
+    "julia": {
+      "modeColor": "#f6fbff"
+    },
+    "rust": {
+      "modeColor": "#effffc"
+    },
+    "r": {
+      "modeColor": "#f3f3ff"
+    }
+  }
+}
+```
