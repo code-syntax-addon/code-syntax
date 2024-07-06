@@ -2,8 +2,10 @@
 
 // So we can import this file in the other libraries.
 export {
+  THEME_PROPERTY_KEY,
   SegmentStyle,
-  Style, THEME_PROPERTY_KEY, Themer,
+  Style,
+  Themer,
   getModeList,
   newThemer,
   setTheme,
@@ -52,8 +54,8 @@ function checkRecord(path: Array<string>, value: any, check: (path: Array<string
 
 type SyntaxConfig = {
   // The default style for the mode.
-  "default"? : StyleConfig;
-  syntax? : Record<string, StyleConfig>;
+  "default"? : StyleOrColor;
+  syntax? : Record<string, StyleOrColor>;
 }
 
 function checkSyntaxConfig(path: Array<string>, value: any): void {
@@ -61,10 +63,10 @@ function checkSyntaxConfig(path: Array<string>, value: any): void {
     throw new Error(`Invalid SyntaxConfig ${path.join('.')}: ${JSON.stringify(value)}`);
   }
   if (value.default !== undefined) {
-    checkStyleConfig([...path, 'default'], value.default);
+    checkStyleOrColor([...path, 'default'], value.default);
   }
   if (value.syntax !== undefined) {
-    checkRecord([...path, 'syntax'], value.syntax, checkStyleConfig);
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
   }
 }
 
@@ -109,17 +111,17 @@ function checkStyle(path: Array<string>, value: any): void {
   }
 }
 
-type StyleConfig = string | Style;
+type StyleOrColor = string | Style;
 
-function checkStyleConfig(path: Array<string>, value: any): void {
+function checkStyleOrColor(path: Array<string>, value: any): void {
   if (typeof value === 'string') return;
   checkStyle(path, value);
 }
 
 type Theme = {
-  default?: StyleConfig;
-  syntax?: Record<string, StyleConfig>;
-  spanColors?: Record<string, StyleConfig>;
+  default?: StyleOrColor;
+  syntax?: Record<string, StyleOrColor>;
+  spanColors?: Record<string, StyleOrColor>;
   modes?: Record<string, ModeConfig>;
 };
 
@@ -128,13 +130,13 @@ function checkTheme(path: Array<string>, value: any): void {
     throw new Error(`Invalid Theme ${path.join('.')}: ${JSON.stringify(value)}`);
   }
   if (value.default !== undefined) {
-    checkStyleConfig([...path, 'default'], value.default);
+    checkStyleOrColor([...path, 'default'], value.default);
   }
   if (value.syntax !== undefined) {
-    checkRecord([...path, 'syntax'], value.syntax, checkStyleConfig);
+    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
   }
   if (value.spanColors !== undefined) {
-    checkRecord([...path, 'spanColors'], value.spanColors, checkStyleConfig);
+    checkRecord([...path, 'spanColors'], value.spanColors, checkStyleOrColor);
   }
   if (value.modes !== undefined) {
     checkRecord([...path, 'modes'], value.modes, checkModeConfig);
@@ -143,7 +145,7 @@ function checkTheme(path: Array<string>, value: any): void {
 
 // Combines the styles, and returns a new style.
 // The most precise style must be last.
-function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
+function mergeStyles(...styles : (StyleOrColor | undefined)[]) : Style {
   let result : Style = {};
   for (let i = 0; i < styles.length; i++) {
     let style = styles[i];
@@ -163,8 +165,8 @@ function mergeStyles(...styles : (StyleConfig | undefined)[]) : Style {
   return result;
 }
 
-function mergeSyntax(...syntax : (Record<string, StyleConfig> | undefined)[]) : Record<string, StyleConfig> {
-  let result : Record<string, StyleConfig> = {};
+function mergeSyntax(...syntax : (Record<string, StyleOrColor> | undefined)[]) : Record<string, StyleOrColor> {
+  let result : Record<string, StyleOrColor> = {};
   for (let i = 0; i < syntax.length; i++) {
     let s = syntax[i];
     if (!s) continue;
@@ -180,14 +182,14 @@ class SegmentStyle {
   public codeMirrorMode : string;
   public background : string;
   public defaultStyle : Style;
-  private syntax? : Record<string, StyleConfig>;
+  private syntax? : Record<string, StyleOrColor>;
 
   public constructor(
       mode : string,
       cmMode : string,
       background : string,
       defaultStyle : Style,
-      syntax? : Record<string, StyleConfig>,
+      syntax? : Record<string, StyleOrColor>,
       ) {
     this.mode = mode;
     this.codeMirrorMode = cmMode;
@@ -214,7 +216,7 @@ class Themer {
     this.theme = theme;
   }
 
-  private toStyle(config : StyleConfig) : Style {
+  private toStyle(config : StyleOrColor) : Style {
     if (typeof config == "string") {
       return { foreground: config };
     }
@@ -303,7 +305,7 @@ const GLOBAL_DEFAULT_STYLE = {
   foreground: "#000000",
 };
 
-const DEFAULT_SPAN_COLORS : Record<string, StyleConfig> = {
+const DEFAULT_SPAN_COLORS : Record<string, StyleOrColor> = {
   "path": "#3c003c",
   "number": "#008c0c",
   "string": "#38008c",
@@ -340,7 +342,7 @@ const DEFAULT_STYLES : Record<string, ModeConfig> = {
   "r": { modeColor: "#f3f3ff" },
 };
 
-const DEFAULT_COLORS : Record<string, StyleConfig> = {
+const DEFAULT_COLORS : Record<string, StyleOrColor> = {
   "header": {
     bold: true,
     foreground: "#0000ff",

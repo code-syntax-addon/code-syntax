@@ -22,11 +22,11 @@
         },
         "default": {
           "description": "The default style for all code.",
-          "$ref": "#/$defs/StyleConfig"
+          "$ref": "#/$defs/StyleOrColor"
         },
         "syntax": {
           "description": "The default syntax highlighting for code sections.",
-          "$ref": "#/$defs/CodeMirrorConfig"
+          "$ref": "#/$defs/CodeMirror"
         },
         "spanColors": {
           "description": "The style for span elements.",
@@ -34,7 +34,7 @@
           "propertyNames": {
             "enum": ["path", "number", "string", "keyword", "ipv4", "rest"]
           },
-          "additionalProperties": { "$ref": "#/$defs/StyleConfig" }
+          "additionalProperties": { "$ref": "#/$defs/StyleOrColor" }
         },
         "modes": {
           "description": "Configurations for specific languages.",
@@ -46,12 +46,12 @@
               "html", "xml", "dockerfile", "julia", "rust", "r"
             ]
           },
-          "additionalProperties": { "$ref": "#/$defs/ModeConfig" }
+          "additionalProperties": { "$ref": "#/$defs/Mode" }
         }
       },
       "additionalProperties": false
     },
-    "StyleConfig": {
+    "StyleOrColor": {
       "description": "The style for a specific element. Either a color string a style object.",
       "oneOf": [
         {
@@ -92,10 +92,10 @@
       },
       "additionalProperties": false
     },
-    "ModeConfig": {
+    "Mode": {
       "type": "object",
       "allOf": [
-        { "$ref": "#/$defs/SyntaxConfig" },
+        { "$ref": "#/$defs/Syntax" },
         {
           "properties": {
             "modeColor": {
@@ -107,21 +107,21 @@
         }
       ]
     },
-    "SyntaxConfig": {
+    "Syntax": {
       "type": "object",
       "properties": {
         "default": {
           "description": "The default style for every element in this mode that doesn't have a more specific style.",
-          "$ref": "#/$defs/StyleConfig"
+          "$ref": "#/$defs/StyleOrColor"
         },
         "syntax": {
           "description": "The syntax highlighting for this mode.",
-          "$ref": "#/$defs/CodeMirrorConfig"
+          "$ref": "#/$defs/CodeMirror"
         }
       },
       "additionalProperties": false
     },
-    "CodeMirrorConfig": {
+    "CodeMirror": {
       "description": "The syntax highlighting for code sections. The keys are the CodeMirror classes.",
       "type": "object",
       "propertyNames": {
@@ -133,7 +133,7 @@
           "attribute", "hr", "link", "error", "invalidchar"
         ]
       },
-      "additionalProperties": { "$ref": "#/$defs/StyleConfig" }
+      "additionalProperties": { "$ref": "#/$defs/StyleOrColor" }
     }
   }
 }
