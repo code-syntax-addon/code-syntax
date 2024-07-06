@@ -69,12 +69,12 @@ function checkSyntaxConfig(path: Array<string>, value: any): void {
 }
 
 interface ModeConfig extends SyntaxConfig{
-  modeColor : string;
+  modeColor? : string;
 };
 
 function checkModeConfig(path: Array<string>, value: any): void {
   checkSyntaxConfig(path, value);
-  if (typeof value.modeColor !== 'string') {
+  if (value.modeColor !== undefined && typeof value.modeColor !== 'string') {
     throw new Error(`Invalid 'modeColor' in ModeConfig ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
   }
 }
