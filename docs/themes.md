@@ -38,3 +38,17 @@ theme file has an entry `$schema` with the value
 }
 ```
 
+### Hierarchy
+
+A theme has the following structure:
+
+``` ts
+type Theme = {
+  "default": StyleOrColor;
+  "syntax": Record<string, StyleOrColor>;
+  "spanColors": Record<string, StyleOrColor>;
+  "modes": Record<string, Mode>;
+};
+```
+
+with
