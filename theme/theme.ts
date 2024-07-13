@@ -406,7 +406,9 @@ function showThemes(
     userTheme : string | null) {
   if (!userTheme) userTheme = "<none>";
   if (!documentTheme) documentTheme = "<none>";
-  let str = "User theme: " + userTheme + "\n";
+  let str = "See https://code-syntax-addon.github.io/code-syntax/theme-gallery.html for\n"
+  str += "available themes and how to create your own.\n\n";
+  str += "User theme: " + userTheme + "\n";
   str += "Document theme: " + documentTheme + "\n";
   ui.alert(str);
 }
