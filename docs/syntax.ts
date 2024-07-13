@@ -372,11 +372,10 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
 
     let paragraph = element.asParagraph();
     let text = paragraph.getText()
-    if (text === "```" || text.startsWith("```\r") || text.startsWith("``` ")) {
+    if (text.startsWith("```")) {
       if (!inCodeSegment) {
         let modeLine = text.split("\r")[0].trim();
-        if (modeLine == "```") modeLine += " "
-        let mode = modeLine.substring("``` ".length);
+        let mode = modeLine.substring("```".length).trim();
         if (mode === "") mode = "none";
         startCodeSegment(mode);
       } else {
