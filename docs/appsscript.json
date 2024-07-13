@@ -12,9 +12,9 @@
       },
       {
         "userSymbol": "theme",
-        "version": "9",
+        "version": "10",
         "libraryId": "1PyJpoB7MqhvFw8Zjw2IT1koJ1tIf4DHdIrmGWuaKofoSr2ZYX0DOX73b",
-        "developmentMode": true
+        "developmentMode": false
       }
     ]
   },
