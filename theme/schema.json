@@ -43,7 +43,7 @@
             "enum": [
               "none", "toit", "dart", "shell", "go", "python", "yaml", "c", "c++", "css",
               "js", "jsx", "ts", "json", "java", "kotlin", "c#", "objective-c", "scala",
-              "html", "xml", "dockerfile", "julia", "rust", "r"
+              "html", "xml", "dockerfile", "julia", "rust", "r", "sql"
             ]
           },
           "additionalProperties": { "$ref": "#/$defs/Mode" }

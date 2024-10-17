@@ -29,6 +29,7 @@ const MODE_TO_CODE_MIRROR = {
   "julia": "text/x-julia",
   "rust": "text/x-rustsrc",
   "r": "text/x-rsrc",
+  "sql": "text/x-sql",
 };
 
 const SPAN_REGEX = [
@@ -330,6 +331,7 @@ const DEFAULT_STYLES : Record<string, Mode> = {
   "julia": { modeColor: "#f6fbff" },
   "rust": { modeColor: "#effffc" },
   "r": { modeColor: "#f3f3ff" },
+  "sql": { modeColor: "#f3f6ff" },
 };
 
 const DEFAULT_COLORS : Record<string, StyleOrColor> = {
