@@ -9,7 +9,7 @@ A code segment.
 And a `code` span.
 ~~~
 
-Code segments mast be in their own text boxes.
+Code segments must be in their own text boxes.
 
 ## Examples
 Before | After
