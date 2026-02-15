@@ -104,3 +104,64 @@ Changes the background color for the 'python' mode to a light green.
 ```
 
 ![Python with Green Background](theme-screens/green-python.png)
+
+## Vim Jellybeans Theme
+
+Applies the Jellybeans VimTheme colorscheme.
+
+```json
+{
+  "$schema": "https://code-syntax-addon.github.io/code-syntax/schemas/theme/v1.json",
+  "description": "Jellybeans - A colorful, dark color scheme translated from Vim",
+  "default": {
+    "foreground": "#e8e8d3",
+    "background": "#151515"
+  },
+  "codeMirror": {
+    "keyword": "#8197bf",
+    "atom": "#cf6a4c",
+    "number": "#cf6a4c",
+    "def": "#fad07a",
+    "variable": "#e8e8d3",
+    "punctuation": "#668799",
+    "property": "#c6b6ee",
+    "operator": "#8197bf",
+    "type": "#ffb964",
+    "comment": {
+      "foreground": "#888888",
+      "italic": true
+    },
+    "string": "#99ad6a",
+    "string-2": "#556633",
+    "meta": "#8fbfdc",
+    "builtin": "#fad07a",
+    "tag": "#8197bf",
+    "attribute": "#ffb964",
+    "error": "#902020"
+  },
+  "spans": {
+    "string": "#99ad6a",
+    "number": "#cf6a4c",
+    "keyword": "#8197bf"
+  },
+  "modes": {
+    "python": {
+      "codeMirror": {
+        "operator": "#8197bf"
+      }
+    },
+    "js": {
+      "codeMirror": {
+        "atom": "#cf6a4c"
+      }
+    },
+    "c": {
+      "codeMirror": {
+        "operator": "#cf6a4c"
+      }
+    }
+  }
+}
+```
+
+![Vim Jellybeans Theme](theme-screens/jellybeans.png)
