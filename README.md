@@ -33,6 +33,13 @@ please create a pull request on the `gh-pages` branch.
 See the [test documentation](tests/README.md) for local regression tests and
 the end-to-end smoke-test procedure.
 
+## Deployment
+
+Use the repository [Makefile](Makefile) with npm-hosted `clasp` to push and
+release only changed Apps Script projects. See the
+[deployment documentation](docs/README.deploy) for the dependency-aware
+release workflow.
+
 ## Kodify
 This add-on was inspired by "Kodify", a google-docs extension that was
 available at Google (go/kodify).
