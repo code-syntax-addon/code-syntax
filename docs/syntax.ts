@@ -136,6 +136,18 @@ function getColorToMode() : Map<string, string> {
   return COLOR_TO_MODE!;
 }
 
+function getActiveSelection() : docs.Range | null {
+  const retryDelays = [100, 300];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return DocumentApp.getActiveDocument().getSelection();
+    } catch (e) {
+      if (attempt >= retryDelays.length) throw e;
+      Utilities.sleep(retryDelays[attempt]);
+    }
+  }
+}
+
 for (let mode of theme.getModeList()) {
   let self : any = this;
   self[changeColorNameFor(mode)] = function() {
@@ -152,7 +164,7 @@ function changeColorTo(mode : string) {
   if (cursor != null) {
     element = cursor.getElement();
   } else {
-    const selection = DocumentApp.getActiveDocument().getSelection();
+    const selection = getActiveSelection();
     if (selection != null) {
       const rangeElements = selection.getRangeElements();
       if (rangeElements.length == 1) {
@@ -207,7 +219,7 @@ function colorize() {
 }
 
 function colorizeSelectionAs(mode : string) {
-  let selection = DocumentApp.getActiveDocument().getSelection();
+  let selection = getActiveSelection();
   if (selection == null) return;
   let rangeElements = selection.getRangeElements();
   let lines : Array<string> = []
@@ -438,13 +450,17 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
     parent.asBody().appendParagraph("");
   }
 
+  let movedParagraphs : Array<Paragraph> = [];
   for (let para of paras) {
+    let indentStart = para.getIndentStart();
+    let indentFirstLine = para.getIndentFirstLine();
     para.removeFromParent();
-    cell.appendParagraph(para);
+    let movedParagraph = cell.appendParagraph(para);
+    movedParagraphs.push(movedParagraph);
     if (minStart !== null) {
       // Remove the indentation. We will indent the table instead.
-      para.setIndentStart(para.getIndentStart() - minStart);
-      para.setIndentFirstLine(para.getIndentFirstLine() - minStart);
+      movedParagraph.setIndentStart(indentStart - minStart);
+      movedParagraph.setIndentFirstLine(indentFirstLine - minStart);
     }
     // No need to change the right indentation, since it's absolute and
     // thus works in the table.
@@ -452,6 +468,7 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
 
   // Remove the automatically inserted empty paragraph.
   cell.removeChild(cell.getChild(0));
+  segment.paragraphs = movedParagraphs;
 
   if (minStart !== null && minStart !== 0) {
     // We can't change the indentation of tables in Google Apps Script.
@@ -472,7 +489,15 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
         .setPaddingRight(0);
     secondCell.setWidth(computeDefaultWidth() - minStart - 2);
     table.removeFromParent();
-    secondCell.appendTable(table);
+    table = secondCell.appendTable(table);
+    // appendTable inserts a copy. Keep references to the elements that are
+    // actually attached to the document.
+    cell = table.getCell(0, 0);
+    segment.cell = cell;
+    segment.paragraphs = [];
+    for (let i = 0; i < cell.getNumChildren(); i++) {
+      segment.paragraphs.push(cell.getChild(i).asParagraph());
+    }
     // Tables seem to require a lines around a table. Add a second one and change
     // their size to 0.
     secondCell.appendParagraph("");
@@ -481,10 +506,30 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
   }
 }
 
+function hasBacktickDelimiters(segment : CodeSegment) : boolean {
+  let paragraphs = segment.paragraphs;
+  if (paragraphs.length == 0) return false;
+  let first = paragraphs[0];
+  let firstText = first.getText();
+  if (!firstText.startsWith("```")) return false;
+  let last = paragraphs[paragraphs.length - 1]
+  let lastText = last.getText();
+  let lineBreak = lastText.lastIndexOf("\r");
+  if (lineBreak != -1) {
+    return lastText.substring(lineBreak + 1, lineBreak + 4) == "```";
+  }
+  // A segment contained in one paragraph needs separate opening and closing
+  // lines. Otherwise this is only an opening delimiter.
+  if (first === last) return false;
+  return lastText.startsWith("```");
+}
+
 function removeBackticks(segment : CodeSegment) {
+  // The document may have changed since findCodeSegments ran.
+  if (!hasBacktickDelimiters(segment)) return;
+
   let paragraphs = segment.paragraphs;
   let first = paragraphs[0];
-  if (!first.getText().startsWith("```")) throw "Unexpected code segment";
   let last = paragraphs[paragraphs.length - 1]
   let lineBreak = first.getText().indexOf("\r");
   if (lineBreak != -1) {
@@ -496,10 +541,8 @@ function removeBackticks(segment : CodeSegment) {
   let lastText = last.getText();
   lineBreak = lastText.lastIndexOf("\r");
   if (lineBreak != -1) {
-    if (lastText.substring(lineBreak + 1, lineBreak + 4) != "```") throw "Unexpected code segment";
     last.editAsText().deleteText(lineBreak, lastText.length - 1);  // deleteText is inclusive.
   } else {
-    if (!last.getText().startsWith("```")) throw "Unexpected code segment";
     last.removeFromParent();
     paragraphs.length--;
   }
@@ -514,6 +557,9 @@ function removeBackticks(segment : CodeSegment) {
 function boxSegments(segments : Array<CodeSegment>) {
   for (let segment of segments) {
     if (!segment.cell) {
+      // The document may have changed since findCodeSegments ran. Do not
+      // restructure a segment unless both delimiters are still present.
+      if (!hasBacktickDelimiters(segment)) continue;
       moveParagraphsIntoTables(segment);
       // By removing the backticks, we might remove all paragraphs of it.
       removeBackticks(segment);
@@ -669,7 +715,15 @@ function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
 
 function highlightCodeSpan(para : Paragraph, startTick : number, endTick : number) {
   let text = para.editAsText();
-  let str = para.getText().substring(startTick + 1, endTick);
+  let currentText = text.getText();
+  if (startTick < 0 ||
+      endTick >= currentText.length ||
+      currentText.charAt(startTick) != "`" ||
+      currentText.charAt(endTick) != "`") {
+    // The paragraph changed after its code spans were identified.
+    return;
+  }
+  let str = currentText.substring(startTick + 1, endTick);
   let style = getThemer().getCodeSpanStyle(str);
   applyStyle(text, startTick, endTick, style);
 

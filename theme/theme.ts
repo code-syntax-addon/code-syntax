@@ -57,18 +57,26 @@ type Mode = {
   codeMirror? : Record<string, StyleOrColor>;
 }
 
+const COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+
+function checkColor(path: Array<string>, value: any): void {
+  if (typeof value !== 'string' || !COLOR_PATTERN.test(value)) {
+    throw new Error(`Invalid color ${path.join('.')}: ${JSON.stringify(value)}. Expected #RRGGBB`);
+  }
+}
+
 function checkMode(path: Array<string>, value: any): void {
   if (typeof value !== 'object') {
     throw new Error(`Invalid Syntax ${path.join('.')}: ${JSON.stringify(value)}`);
   }
-  if (value.default !== undefined) {
-    checkStyleOrColor([...path, 'default'], value.default);
+  if (value.style !== undefined) {
+    checkStyleOrColor([...path, 'style'], value.style);
   }
-  if (value.syntax !== undefined) {
-    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
+  if (value.codeMirror !== undefined) {
+    checkRecord([...path, 'codeMirror'], value.codeMirror, checkStyleOrColor);
   }
-  if (value.modeColor !== undefined && typeof value.modeColor !== 'string') {
-    throw new Error(`Invalid 'modeColor' in Mode ${path.join('.')}: ${JSON.stringify(value.modeColor)}`);
+  if (value.modeColor !== undefined) {
+    checkColor([...path, 'modeColor'], value.modeColor);
   }
 }
 
@@ -94,18 +102,21 @@ function checkStyle(path: Array<string>, value: any): void {
   if (value.bold !== undefined && typeof value.bold !== 'boolean') {
     throw new Error(`Invalid 'bold' in Style ${path.join('.')}: ${JSON.stringify(value.bold)}`);
   }
-  if (value.foreground !== undefined && typeof value.foreground !== 'string') {
-    throw new Error(`Invalid 'foreground' in Style ${path.join('.')}: ${JSON.stringify(value.foreground)}`);
+  if (value.foreground !== undefined) {
+    checkColor([...path, 'foreground'], value.foreground);
   }
-  if (value.background !== undefined && typeof value.background !== 'string') {
-    throw new Error(`Invalid 'background' in Style ${path.join('.')}: ${JSON.stringify(value.background)}`);
+  if (value.background !== undefined) {
+    checkColor([...path, 'background'], value.background);
   }
 }
 
 type StyleOrColor = string | Style;
 
 function checkStyleOrColor(path: Array<string>, value: any): void {
-  if (typeof value === 'string') return;
+  if (typeof value === 'string') {
+    checkColor(path, value);
+    return;
+  }
   checkStyle(path, value);
 }
 
@@ -123,8 +134,8 @@ function checkTheme(path: Array<string>, value: any): void {
   if (value.default !== undefined) {
     checkStyleOrColor([...path, 'default'], value.default);
   }
-  if (value.syntax !== undefined) {
-    checkRecord([...path, 'syntax'], value.syntax, checkStyleOrColor);
+  if (value.codeMirror !== undefined) {
+    checkRecord([...path, 'codeMirror'], value.codeMirror, checkStyleOrColor);
   }
   if (value.spans !== undefined) {
     checkRecord([...path, 'spans'], value.spans, checkStyleOrColor);
@@ -392,14 +403,24 @@ const DEFAULT_THEME : Theme = {
 
 const THEME_PROPERTY_KEY = "theme";
 
-function newThemer(documentTheme : string | null, userTheme : string | null) : Themer {
-  if (documentTheme) {
-    return new Themer(JSON.parse(documentTheme));
-  } else if (userTheme) {
-    return new Themer(JSON.parse(userTheme));
-  } else {
-    return new Themer(DEFAULT_THEME);
+function parseTheme(theme : string | null, source : string) : Theme | null {
+  if (!theme) return null;
+  try {
+    let parsed = JSON.parse(theme);
+    checkTheme([], parsed);
+    return parsed;
+  } catch (e) {
+    console.error(`Ignoring invalid ${source} theme: ${e.message}`);
+    return null;
   }
+}
+
+function newThemer(documentTheme : string | null, userTheme : string | null) : Themer {
+  let parsedDocumentTheme = parseTheme(documentTheme, "document");
+  if (parsedDocumentTheme) return new Themer(parsedDocumentTheme);
+  let parsedUserTheme = parseTheme(userTheme, "user");
+  if (parsedUserTheme) return new Themer(parsedUserTheme);
+  return new Themer(DEFAULT_THEME);
 }
 
 function showThemes(

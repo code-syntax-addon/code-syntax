@@ -180,6 +180,7 @@ for (let mode of theme.getModeList()) {
 function changeColorTo(mode : string) {
   let selection = SlidesApp.getActivePresentation().getSelection();
   let elementRange = selection.getPageElementRange();
+  if (!elementRange) return;
   elementRange.getPageElements().forEach(function(pe) {
     changeColorOfPageElement(pe, mode);
   });
@@ -225,6 +226,7 @@ function colorize() {
 function colorizeSlide() {
   let selection = SlidesApp.getActivePresentation().getSelection();
   let currentPage = selection.getCurrentPage();
+  if (!currentPage) return;
   if (currentPage.getPageType() != SlidesApp.PageType.SLIDE) return;
   let slide = currentPage.asSlide();
   doSlide(slide);
@@ -279,8 +281,20 @@ function isBoxedCodeShape(shape : Shape) : boolean {
   return getColorToMode().has(hexColor);
 }
 
+function getShapeText(shape : Shape) : TextRange | null {
+  try {
+    return shape.getText();
+  } catch (e) {
+    // Slides may reject getText for some shapes, even though they are exposed
+    // as Shape page elements.
+    return null;
+  }
+}
+
 function isTextCodeShape(shape : Shape) : boolean {
-  let str = shape.getText().asString();
+  let text = getShapeText(shape);
+  if (!text) return false;
+  let str = text.asString();
   if (!str.startsWith("```")) return false;
   let lastTicksN = str.lastIndexOf('\n```');
   let lastTicksV = str.lastIndexOf('\v```'); // Vertical tab.
@@ -354,15 +368,8 @@ function colorizeText(text : TextRange, mode : string) {
 }
 
 function colorizeSpans(shape : Shape) {
-  let text : TextRange | null = null;
-  try {
-    text = shape.getText();
-  } catch (e) {
-    // We don't know why this happens, but we have seen stack traces
-    // with it.
-    return;
-  }
-  if (text == null) return;
+  let text = getShapeText(shape);
+  if (!text) return;
   if (text.isEmpty()) return;
   let str = text.asString();
   let spans : Array<CodeSpan> = [];
