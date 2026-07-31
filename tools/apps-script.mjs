@@ -227,9 +227,16 @@ async function createVersion(project, description) {
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   const output = `${result.stdout}\n${result.stderr}`;
-  const match = output.match(/Created version\s+(\d+)\./);
-  if (!match) fail(`Could not determine the new ${project} version from clasp output.`);
-  return Number(match[1]);
+  const version = versionFromOutput(output);
+  if (version === null) {
+    fail(`Could not determine the new ${project} version from clasp output.`);
+  }
+  return version;
+}
+
+export function versionFromOutput(output) {
+  const match = output.match(/Created version\s+(\d+)\b/);
+  return match ? Number(match[1]) : null;
 }
 
 function updateLibraryReferences(library, version) {

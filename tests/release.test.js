@@ -21,7 +21,8 @@ test("release change detection ignores non-deployable project files", async () =
 });
 
 test("library releases include both dependent add-ons", async () => {
-  const {releasePlan} = await import("../tools/apps-script.mjs");
+  const {releasePlan, versionFromOutput} =
+      await import("../tools/apps-script.mjs");
 
   assert.deepEqual(releasePlan(["theme"]), ["theme", "docs", "slides"]);
   assert.deepEqual(
@@ -29,6 +30,9 @@ test("library releases include both dependent add-ons", async () => {
       ["codemirror", "docs", "slides"]);
   assert.deepEqual(releasePlan(["docs"]), ["docs"]);
   assert.deepEqual(releasePlan([]), []);
+  assert.equal(versionFromOutput("Created version 12"), 12);
+  assert.equal(versionFromOutput("Created version 13."), 13);
+  assert.equal(versionFromOutput("Unexpected output"), null);
 });
 
 test("build stages transpiled JavaScript instead of TypeScript", async () => {
