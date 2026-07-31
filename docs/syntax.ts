@@ -203,10 +203,11 @@ class CodeSegment {
 
 function colorize() {
   let document = DocumentApp.getActiveDocument();
-  let codeSegments = findCodeSegments(document.getBody());
+  let paragraphs : Array<Paragraph> = [];
+  let codeSegments = findCodeSegments(document.getBody(), paragraphs);
   // Highlight code spans before we filter out the unknown code segments.
   // We don't want to modify unknown segments at all.
-  highlightCodeSpansAndHeadings(codeSegments);
+  highlightCodeSpansAndHeadings(codeSegments, paragraphs);
 
   // Filter out segments where we don't know the mode.
   // Otherwise we would remove the mode line, without giving the user a chance
@@ -223,7 +224,8 @@ function colorizeSelectionAs(mode : string) {
   if (selection == null) return;
   let rangeElements = selection.getRangeElements();
   let lines : Array<string> = []
-  let texts : Array<Array<any>> = []
+  let texts : Array<{text : Text, offset : number}> = []
+  let runs : Array<TextStyleRun> = [];
 
   let codeMirrorStyle = getModeToStyle().get(mode)!;
 
@@ -254,20 +256,12 @@ function colorizeSelectionAs(mode : string) {
       if (length == 0) continue;
 
       let to = from + length - 1;
-      let defaultStyle = codeMirrorStyle.defaultStyle;
-      let fontFamily = defaultStyle.fontFamily;
-      if (fontFamily) text.setFontFamily(from, to, fontFamily);
-      let foreground = defaultStyle.foreground;
-      if (foreground) text.setForegroundColor(from, to, foreground);
-      let background = defaultStyle.background;
-      if (background) text.setBackgroundColor(from, to, background);
-      if (defaultStyle.bold !== undefined) text.setBold(from, to, defaultStyle.bold);
-      if (defaultStyle.italic !== undefined) text.setItalic(from, to, defaultStyle.italic);
+      applyStyle(text, from, to, codeMirrorStyle.defaultStyle);
       let elementLines = content.split("\r");
       let offset = from;
       for (let line of elementLines) {
         lines.push(line);
-        texts.push([text, offset]);
+        texts.push({text: text, offset: offset});
         offset += line.length + 1;
       }
     }
@@ -281,11 +275,15 @@ function colorizeSelectionAs(mode : string) {
       return;
     }
     let current = texts[lineIndex];
-    let text = current[0];
-    let offset = current[1];
-    applyCodeMirrorStyle(codeMirrorStyle, text, offset + lineOffset, token, style)
+    appendTextStyleRun(
+        runs,
+        current.text,
+        current.offset + lineOffset,
+        token.length,
+        codeMirrorStyle.codeMirrorStyleToStyleDelta(style));
     lineOffset += token.length;
   });
+  applyTextStyleRuns(runs);
 }
 
 let defaultWidth : number | null = null;
@@ -327,20 +325,20 @@ function codeSegmentFromCodeTable(table : Table) : CodeSegment {
   return codeSegment;
 }
 
-function findCodeSegmentsInTable(table : Table) : Array<CodeSegment> {
+function findCodeSegmentsInTable(table : Table, paragraphs : Array<Paragraph>) : Array<CodeSegment> {
   let result : Array<CodeSegment> = [];
   for (let i = 0; i < table.getNumRows(); i++) {
     let row = table.getRow(i);
     for (let j = 0; j < row.getNumCells(); j++) {
       let cell = row.getCell(j);
-      let segments = findCodeSegments(cell);
+      let segments = findCodeSegments(cell, paragraphs);
       result.push(...segments);
     }
   }
   return result;
 }
 
-function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
+function findCodeSegments(container : Body | TableCell, paragraphs : Array<Paragraph>) : Array<CodeSegment> {
   let result : Array<CodeSegment> = []
   let inCodeSegment = false;
   let accumulated : Array<Paragraph> | null = [];
@@ -374,15 +372,18 @@ function findCodeSegments(container : Body | TableCell) : Array<CodeSegment> {
     if (element.getType() == DocumentApp.ElementType.TABLE) {
       let table = element.asTable();
       if (isCodeTable(table)) {
-        result.push(codeSegmentFromCodeTable(table));
+        let segment = codeSegmentFromCodeTable(table);
+        result.push(segment);
+        paragraphs.push(...segment.paragraphs);
       } else {
-        let nested = findCodeSegmentsInTable(element.asTable());
+        let nested = findCodeSegmentsInTable(element.asTable(), paragraphs);
         result.push(...nested);
       }
     }
     if (element.getType() != DocumentApp.ElementType.PARAGRAPH) continue;
 
     let paragraph = element.asParagraph();
+    paragraphs.push(paragraph);
     let text = paragraph.getText()
     if (text.startsWith("```")) {
       if (!inCodeSegment) {
@@ -475,18 +476,19 @@ function moveParagraphsIntoTables(segment : CodeSegment) {
     // As a work-around we create another invisible table. It's an ugly hack, but
     //   unfortunately seems to be the only way.
     let indentTable = insertTableAt(parent, index);
-    let attributes = indentTable.getAttributes();
-    attributes["BORDER_WIDTH"] = 0;
-    indentTable.setAttributes(attributes);
+    let indentAttributes : any = {};
+    indentAttributes[DocumentApp.Attribute.BORDER_WIDTH] = 0;
+    indentTable.setAttributes(indentAttributes);
 
     let row = indentTable.appendTableRow();
     row.appendTableCell().setWidth(minStart);
     let secondCell = row.appendTableCell();
-    secondCell
-        .setPaddingTop(0)
-        .setPaddingBottom(0)
-        .setPaddingLeft(0)
-        .setPaddingRight(0);
+    let secondCellAttributes : any = {};
+    secondCellAttributes[DocumentApp.Attribute.PADDING_TOP] = 0;
+    secondCellAttributes[DocumentApp.Attribute.PADDING_BOTTOM] = 0;
+    secondCellAttributes[DocumentApp.Attribute.PADDING_LEFT] = 0;
+    secondCellAttributes[DocumentApp.Attribute.PADDING_RIGHT] = 0;
+    secondCell.setAttributes(secondCellAttributes);
     secondCell.setWidth(computeDefaultWidth() - minStart - 2);
     table.removeFromParent();
     table = secondCell.appendTable(table);
@@ -567,28 +569,69 @@ function boxSegments(segments : Array<CodeSegment>) {
 
     let style = getModeToStyle().get(segment.mode)!;
     let cell = segment.cell!;
-    cell.setBackgroundColor(style.background);
+    let cellAttributes : any = {};
+    cellAttributes[DocumentApp.Attribute.BACKGROUND_COLOR] = style.background;
+    cellAttributes[DocumentApp.Attribute.PADDING_TOP] = 10;
+    cellAttributes[DocumentApp.Attribute.PADDING_BOTTOM] = 10;
+    cellAttributes[DocumentApp.Attribute.PADDING_LEFT] = 10;
+    cellAttributes[DocumentApp.Attribute.PADDING_RIGHT] = 10;
+    cell.setAttributes(cellAttributes);
     cell.getParentTable().setBorderColor("#e0e0e0");
-    cell.setPaddingTop(10);
-    cell.setPaddingBottom(10);
-    cell.setPaddingLeft(10);
-    cell.setPaddingRight(10);
     let defaultStyle = style.defaultStyle;
     for (let para of segment.paragraphs) {
-      let text = para.editAsText();
-      if (defaultStyle.foreground) text.setForegroundColor(defaultStyle.foreground);
-      if (defaultStyle.background) text.setBackgroundColor(defaultStyle.background);
-      if (defaultStyle.fontFamily) text.setFontFamily(defaultStyle.fontFamily);
-      if (defaultStyle.bold !== undefined) text.setBold(defaultStyle.bold);
-      if (defaultStyle.italic !== undefined) text.setItalic(defaultStyle.italic);
+      applyStyleToWholeText(para.editAsText(), defaultStyle);
     }
   }
 }
 
-function applyCodeMirrorStyle(segmentStyle : theme.SegmentStyle, text : Text, start : number, token : string, cmStyle : string) {
-  let style = segmentStyle.codeMirrorStyleToStyle(cmStyle);
-  let endInclusive = start + token.length - 1;
-  applyStyle(text, start, endInclusive, style);
+type TextStyleRun = {
+  text : Text,
+  start : number,
+  endInclusive : number,
+  style : theme.Style,
+  key : string,
+};
+
+function styleKey(style : theme.Style) : string {
+  let values : Array<any> = [];
+  if (style.fontFamily) values.push("fontFamily", style.fontFamily);
+  if (style.foreground) values.push("foreground", style.foreground);
+  if (style.background) values.push("background", style.background);
+  if (style.bold !== undefined) values.push("bold", style.bold);
+  if (style.italic !== undefined) values.push("italic", style.italic);
+  return JSON.stringify(values);
+}
+
+function appendTextStyleRun(
+    runs : Array<TextStyleRun>,
+    text : Text,
+    start : number,
+    length : number,
+    style : theme.Style) {
+  if (length == 0) return;
+  let key = styleKey(style);
+  if (key == "[]") return;
+  let previous = runs.length == 0 ? null : runs[runs.length - 1];
+  if (previous &&
+      previous.text === text &&
+      previous.endInclusive + 1 == start &&
+      previous.key == key) {
+    previous.endInclusive += length;
+    return;
+  }
+  runs.push({
+    text: text,
+    start: start,
+    endInclusive: start + length - 1,
+    style: style,
+    key: key,
+  });
+}
+
+function applyTextStyleRuns(runs : Array<TextStyleRun>) {
+  for (let run of runs) {
+    applyStyle(run.text, run.start, run.endInclusive, run.style);
+  }
 }
 
 function highlightSegments(segments : Array<CodeSegment>) {
@@ -598,40 +641,38 @@ function highlightSegments(segments : Array<CodeSegment>) {
 function highlightSegment(segment : CodeSegment) {
   let paras = segment.paragraphs;
   let lines : Array<string> = [];
+  let texts : Array<{text : Text, offset : number}> = [];
   for (let para of paras) {
-    lines.push(...para.getText().split("\r"));
+    let content = para.getText();
+    let text = para.editAsText();
+    let offset = 0;
+    for (let line of content.split("\r")) {
+      lines.push(line);
+      texts.push({text: text, offset: offset});
+      offset += line.length + 1;
+    }
   }
-  let current_index = 0;  // The index of the current paragraph.
-  let offset = 0;  // The offset within the paragraph.
+  let lineIndex = 0;
+  let lineOffset = 0;
+  let runs : Array<TextStyleRun> = [];
   let segmentStyle = getModeToStyle().get(segment.mode);
   if (segmentStyle === undefined) return;  // This happens when the user wrote their own code segment.
   codemirror.runMode(lines, segmentStyle.codeMirrorMode, function(token, style) {
-    let current = paras[current_index];
-    let str = current.getText();
-    if (offset === str.length) {
-      if (token != "\n" || style !== null) {
-        throw "Unexpected token";
-      }
-      current_index++;
-      offset = 0;
+    if (token == "\n") {
+      lineIndex++;
+      lineOffset = 0;
       return;
     }
-    let text = current.editAsText();
-    applyCodeMirrorStyle(segmentStyle, text, offset, token, style);
-    offset += token.length;
+    let current = texts[lineIndex];
+    appendTextStyleRun(
+        runs,
+        current.text,
+        current.offset + lineOffset,
+        token.length,
+        segmentStyle!.codeMirrorStyleToStyleDelta(style));
+    lineOffset += token.length;
   });
-}
-
-// Assumes that the element is part of the document.
-// We don't check that the parent eventually ends up being the document.
-function computeElementPath(element : Element) : string {
-  let result = "";
-  while (true) {
-    let parent = element.getParent();
-    if (!parent) return result;
-    result += ":" + parent.getChildIndex(element);
-    element = parent;
-  }
+  applyTextStyleRuns(runs);
 }
 
 const HEADINGS = {
@@ -641,24 +682,22 @@ const HEADINGS = {
   "####": DocumentApp.ParagraphHeading.HEADING3,
 }
 
-function highlightCodeSpansAndHeadings(segments : Array<CodeSegment>) {
-  let inCodeSegments = new Set<string>();
+function highlightCodeSpansAndHeadings(
+    segments : Array<CodeSegment>, paragraphs : Array<Paragraph>) {
+  let inCodeSegments = new Set<Paragraph>();
 
   // Mark the paragraphs that are inside a code segment, so we don't change
   // them.
   for (let segment of segments) {
     for (let para of segment.paragraphs) {
-      inCodeSegments.add(computeElementPath(para));
+      inCodeSegments.add(para);
     }
   }
 
-  // We don't change the headings right away, as this would change the paths
-  // of the paragraphs.
-  // Instead we record the changes we would like to do, and then do them
-  // once we have run through all paragraphs.
+  // Record heading changes and apply them after scanning every paragraph.
   let headingsToChange : Array<any> = [];
-  for (let para of DocumentApp.getActiveDocument().getBody().getParagraphs()) {
-    if (inCodeSegments.has(computeElementPath(para))) {
+  for (let para of paragraphs) {
+    if (inCodeSegments.has(para)) {
       continue;
     }
     let text = para.getText();
@@ -733,15 +772,25 @@ function highlightCodeSpan(para : Paragraph, startTick : number, endTick : numbe
   text.deleteText(startTick, startTick);
 }
 
+function documentAttributesForStyle(style : theme.Style) : any {
+  let attributes : any = {};
+  if (style.fontFamily) attributes[DocumentApp.Attribute.FONT_FAMILY] = style.fontFamily;
+  if (style.foreground) attributes[DocumentApp.Attribute.FOREGROUND_COLOR] = style.foreground;
+  if (style.background) attributes[DocumentApp.Attribute.BACKGROUND_COLOR] = style.background;
+  if (style.bold !== undefined) attributes[DocumentApp.Attribute.BOLD] = style.bold;
+  if (style.italic !== undefined) attributes[DocumentApp.Attribute.ITALIC] = style.italic;
+  return attributes;
+}
+
+function applyStyleToWholeText(text : docs.Text, style : theme.Style) {
+  let attributes = documentAttributesForStyle(style);
+  if (Object.keys(attributes).length == 0) return;
+  text.setAttributes(attributes);
+}
+
 function applyStyle(text : docs.Text, start : number, endInclusive : number, style : theme.Style) {
-  if (!style) {
-    // Shouldn't happen with the current theme, but we treat this
-    // as "don't change anything".
-    return;
-  }
-  if (style.fontFamily) text.setFontFamily(start, endInclusive, style.fontFamily);
-  if (style.foreground) text.setForegroundColor(start, endInclusive, style.foreground);
-  if (style.background) text.setBackgroundColor(start, endInclusive, style.background);
-  if (style.bold !== undefined) text.setBold(start, endInclusive, style.bold);
-  if (style.italic !== undefined) text.setItalic(start, endInclusive, style.italic);
+  if (start > endInclusive) return;
+  let attributes = documentAttributesForStyle(style);
+  if (Object.keys(attributes).length == 0) return;
+  text.setAttributes(start, endInclusive, attributes);
 }

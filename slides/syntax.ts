@@ -108,8 +108,8 @@ class CodeShape {
     return new CodeShape(shape, mode);
   }
 
-  static fromText(shape : Shape) : CodeShape {
-    let str = shape.getText().asString();
+  static fromText(shape : Shape, text : TextRange) : CodeShape {
+    let str = text.asString();
     let lineEnd = indexOfLineSeparator(str);
     let firstLine = str.substring(0, lineEnd);
     let mode = firstLine.substring(3).trim();  // Skip the triple-quotes.
@@ -191,14 +191,6 @@ function colorizeSelectionAs(mode : string) {
   let text = selection.getTextRange();
   if (!text) return;
   if (text.isEmpty()) return;
-  let textStyle = text.getTextStyle();
-  let style = getModeToStyle().get(mode)!;
-  let defaultStyle = style.defaultStyle;
-  if (defaultStyle.fontFamily) textStyle.setFontFamily(defaultStyle.fontFamily);
-  if (defaultStyle.foreground) textStyle.setForegroundColor(defaultStyle.foreground);
-  if (defaultStyle.background) textStyle.setBackgroundColor(defaultStyle.background);
-  if (defaultStyle.bold !== undefined) textStyle.setBold(defaultStyle.bold);
-  if (defaultStyle.italic !== undefined) textStyle.setItalic(defaultStyle.italic);
   colorizeText(text, mode)
 }
 
@@ -210,7 +202,9 @@ function changeColorOfPageElement(pageElement : PageElement, mode : string) {
     let codeShape = CodeShape.fromBoxed(shape);
     codeShape.mode = mode;
     boxShape(codeShape);  // Applies the color.
-    colorizeCodeShape(codeShape);
+    let text = getShapeText(shape);
+    if (!text) return;
+    colorizeCodeShape(codeShape, text);
   } else if (pageElement.getPageElementType() == SlidesApp.PageElementType.GROUP) {
     pageElement.asGroup().getChildren().forEach(function(pe) {
       changeColorOfPageElement(pe, mode);
@@ -250,17 +244,24 @@ function doShape(shape : Shape) {
   let codeShape : CodeShape;
   if (isBoxedCodeShape(shape)) {
     codeShape = CodeShape.fromBoxed(shape);
-    colorizeCodeShape(codeShape);
-  } else if (isTextCodeShape(shape)) {
-    codeShape = CodeShape.fromText(shape);
+    let text = getShapeText(shape);
+    if (!text) return;
+    colorizeCodeShape(codeShape, text);
+    return;
+  }
+
+  let text = getShapeText(shape);
+  if (!text) return;
+  if (isTextCodeShape(text)) {
+    codeShape = CodeShape.fromText(shape, text);
     if (!getModeToStyle().has(codeShape.mode)) return
     // Box first, as this makes it easier to apply text styles.
     // GAS doesn't like it when there is no text.
     boxShape(codeShape);
-    removeTripleBackticks(codeShape);
-    colorizeCodeShape(codeShape);
+    removeTripleBackticks(text);
+    colorizeCodeShape(codeShape, text);
   } else {
-    colorizeSpans(shape);
+    colorizeSpans(text);
   }
 }
 
@@ -291,9 +292,7 @@ function getShapeText(shape : Shape) : TextRange | null {
   }
 }
 
-function isTextCodeShape(shape : Shape) : boolean {
-  let text = getShapeText(shape);
-  if (!text) return false;
+function isTextCodeShape(text : TextRange) : boolean {
   let str = text.asString();
   if (!str.startsWith("```")) return false;
   let lastTicksN = str.lastIndexOf('\n```');
@@ -310,16 +309,6 @@ function boxShape(codeShape : CodeShape) {
   let shape = codeShape.shape;
   let style = getModeToStyle().get(codeShape.mode)!;
   shape.getFill().setSolidFill(style.background);
-
-  let text = shape.getText();
-  if (text.isEmpty()) return;
-  let textStyle = text.getTextStyle();
-  let defaultStyle = style.defaultStyle;
-  if (defaultStyle.fontFamily) textStyle.setFontFamily(defaultStyle.fontFamily);
-  if (defaultStyle.foreground) textStyle.setForegroundColor(defaultStyle.foreground);
-  if (defaultStyle.background) textStyle.setBackgroundColor(defaultStyle.background);
-  if (defaultStyle.bold !== undefined) textStyle.setBold(defaultStyle.bold);
-  if (defaultStyle.italic !== undefined) textStyle.setItalic(defaultStyle.italic);
 }
 
 function indexOfLineSeparator(str : string) : number {
@@ -330,9 +319,7 @@ function indexOfLineSeparator(str : string) : number {
   return Math.min(n, v);
 }
 
-function removeTripleBackticks(codeShape : CodeShape) {
-  let shape = codeShape.shape;
-  let text = shape.getText();
+function removeTripleBackticks(text : TextRange) {
   let str = text.asString();
   let endOfFirstLine = indexOfLineSeparator(str);
   let startOfLastLineN = str.lastIndexOf('\n```');
@@ -347,29 +334,67 @@ function removeTripleBackticks(codeShape : CodeShape) {
   }
 }
 
-function colorizeCodeShape(codeShape : CodeShape) {
-  let shape = codeShape.shape;
-  let mode = codeShape.mode;
-  let text = shape.getText()
-  colorizeText(text, mode)
+function colorizeCodeShape(codeShape : CodeShape, text : TextRange) {
+  colorizeText(text, codeShape.mode)
+}
+
+type TextStyleRun = {
+  start : number,
+  end : number,
+  style : theme.Style,
+  key : string,
+};
+
+function styleKey(style : theme.Style) : string {
+  let values : Array<any> = [];
+  if (style.fontFamily) values.push("fontFamily", style.fontFamily);
+  if (style.foreground) values.push("foreground", style.foreground);
+  if (style.background) values.push("background", style.background);
+  if (style.bold !== undefined) values.push("bold", style.bold);
+  if (style.italic !== undefined) values.push("italic", style.italic);
+  return JSON.stringify(values);
+}
+
+function appendTextStyleRun(
+    runs : Array<TextStyleRun>, start : number, length : number, style : theme.Style) {
+  if (length == 0) return;
+  let key = styleKey(style);
+  if (key == "[]") return;
+  let previous = runs.length == 0 ? null : runs[runs.length - 1];
+  if (previous && previous.end == start && previous.key == key) {
+    previous.end += length;
+    return;
+  }
+  runs.push({
+    start: start,
+    end: start + length,
+    style: style,
+    key: key,
+  });
 }
 
 function colorizeText(text : TextRange, mode : string) {
   let str = text.asString();
+  if (str.length == 0) return;
   str = str.replace(/\x0B/g, "\n")
   let codeMirrorStyle = getModeToStyle().get(mode)!;
+  applyStyle(text, codeMirrorStyle.defaultStyle);
   let offset = 0;
+  let runs : Array<TextStyleRun> = [];
   codemirror.runMode(str, codeMirrorStyle.codeMirrorMode, function(token : string, tokenStyle : string) {
-    let range = text.getRange(offset, offset + token.length);
-    let style = codeMirrorStyle.codeMirrorStyleToStyle(tokenStyle);
-    applyStyle(range, style)
+    appendTextStyleRun(
+        runs,
+        offset,
+        token.length,
+        codeMirrorStyle.codeMirrorStyleToStyleDelta(tokenStyle));
     offset += token.length;
   });
+  for (let run of runs) {
+    applyStyle(text.getRange(run.start, run.end), run.style);
+  }
 }
 
-function colorizeSpans(shape : Shape) {
-  let text = getShapeText(shape);
-  if (!text) return;
+function colorizeSpans(text : TextRange) {
   if (text.isEmpty()) return;
   let str = text.asString();
   let spans : Array<CodeSpan> = [];
@@ -399,7 +424,7 @@ function colorizeSpans(shape : Shape) {
   let themer = getThemer();
   for (let i = spans.length - 1; i >= 0; i--) {
     let span = spans[i];
-    let rangeText = text.asString().substring(span.from + 1, span.to)
+    let rangeText = str.substring(span.from + 1, span.to)
     let style = themer.getCodeSpanStyle(rangeText);
     // We change the section with the back-ticks, and then remove the ticks afterwards.
     // This way we never have to deal with empty strings.
@@ -411,6 +436,7 @@ function colorizeSpans(shape : Shape) {
 }
 
 function applyStyle(range : TextRange, style : theme.Style) {
+  if (styleKey(style) == "[]") return;
   let textStyle = range.getTextStyle();
   // For some reason we sometimes get "The object (gb66c79a860_0_8) has no text."
   // when setting the foreground. We can see that the text is "\x0a", but we
