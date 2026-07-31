@@ -1,13 +1,85 @@
 # Deploy
 
-Use clasp (`gclasp` on Archlinux) to upload:
+Run deployment commands from the repository root. The Makefile uses the
+current npm release of `@google/clasp`, pinned by default to version 3.3.0, so
+an outdated system `gclasp` package is not required.
 
+Install the pinned deployment tools, then log in and inspect the projects:
+
+```sh
+make setup
+make login
+make build
+make status
 ```
-clasp login
-clasp status
-clasp push
+
+Clasp 3 no longer transpiles TypeScript during `push`. The Makefile uses the
+pinned `ts2gas` package to build ignored `.clasp-build` staging directories and
+points clasp at the generated JavaScript. `make status` therefore shows the
+exact generated files that would be uploaded.
+
+## Push scripts
+
+Push deployable files changed relative to a Git ref:
+
+```sh
+make plan SINCE=origin/master
+make push SINCE=origin/master
 ```
 
-Create a new version with `clasp version [description]`.
+On a feature branch, `origin/master` is normally the correct comparison. If
+the changes have already been merged and pulled into `master`, provide the
+commit or tag of the last release instead:
 
-Deploy it with `clasp deploy [version] [description]`.
+```sh
+make push SINCE=<last-release-ref>
+```
+
+Projects can also be selected explicitly:
+
+```sh
+make push PROJECTS="docs slides"
+make push-theme
+make push-all
+```
+
+Only Apps Script source and configuration files count as project changes.
+README files, screenshots, tests, schemas, and npm metadata do not trigger a
+push or release.
+
+## Create a release
+
+Preview the dependency-expanded release order, then release:
+
+```sh
+make plan SINCE=<last-release-ref>
+make release SINCE=<last-release-ref> DESCRIPTION="Release description"
+```
+
+The release command:
+
+1. pushes and versions changed `codemirror` and `theme` libraries;
+2. writes their new versions into the Docs and Slides manifests;
+3. pushes and versions directly changed or dependency-affected add-ons; and
+4. prints every newly created Apps Script version.
+
+If a library was released, review and commit the resulting changes to
+`docs/appsscript.json` and `slides/appsscript.json`.
+
+Releases require committed Apps Script files. `ALLOW_DIRTY=1` is available for
+an intentional exception.
+
+## Update existing deployments
+
+Deployment updates are opt-in and require explicit IDs. This prevents the
+release command from accidentally creating replacement deployments:
+
+```sh
+make release-deploy SINCE=<last-release-ref> \
+  DOCS_DEPLOYMENT_ID=<docs-id> \
+  SLIDES_DEPLOYMENT_ID=<slides-id>
+```
+
+After creating add-on versions, update the corresponding versions in the
+[Google Workspace Marketplace SDK configuration](https://console.cloud.google.com/apis/api/appsmarket-component.googleapis.com/googleapps_sdk?project=syntax-highlight-302620)
+when required by the publication workflow.

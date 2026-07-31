@@ -1,0 +1,8 @@
+{
+  "name": "code-syntax",
+  "private": true,
+  "devDependencies": {
+    "@google/clasp": "3.3.0",
+    "ts2gas": "4.2.0"
+  }
+}
