@@ -100,16 +100,17 @@
           "description": "The background color for code blocks. Must be unique per mode.",
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "style": {
+          "description": "The style for every element that doesn't have a code-mirror style.",
+          "$ref": "#/$defs/StyleOrColor"
+        },
+        "codeMirror": {
+          "description": "The syntax highlighting for this mode.",
+          "$ref": "#/$defs/CodeMirror"
         }
       },
-      "style": {
-        "description": "The style for every element that doesn't have a code-mirror style.",
-        "$ref": "#/$defs/StyleOrColor"
-      },
-      "codeMirror": {
-        "description": "The syntax highlighting for this mode.",
-        "$ref": "#/$defs/CodeMirror"
-      }
+      "additionalProperties": false
     },
     "CodeMirror": {
       "description": "The syntax highlighting for code sections. The keys are the CodeMirror classes.",
