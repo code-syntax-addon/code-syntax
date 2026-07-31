@@ -28,6 +28,11 @@ examples of themes.
 If you want to contribute a [theme](https://code-syntax-addon.github.io/code-syntax/themes.html),
 please create a pull request on the `gh-pages` branch.
 
+## Testing
+
+See the [test documentation](tests/README.md) for local regression tests and
+the end-to-end smoke-test procedure.
+
 ## Kodify
 This add-on was inspired by "Kodify", a google-docs extension that was
 available at Google (go/kodify).

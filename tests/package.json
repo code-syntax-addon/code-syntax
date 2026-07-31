@@ -1,0 +1,10 @@
+{
+  "name": "code-syntax-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "ts2gas": "4.2.0"
+  }
+}

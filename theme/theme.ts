@@ -208,6 +208,18 @@ class SegmentStyle {
     }
     return mergeStyles(this.defaultStyle, entry);
   }
+
+  // Returns only the attributes that differ from the default style. Callers
+  // can apply the default once and avoid reapplying it for every token.
+  public codeMirrorStyleToStyleDelta(cmStyle : string | null) : Style {
+    if (!cmStyle) return {};
+    let entry = this.syntax ? this.syntax[cmStyle] : undefined;
+    if (!entry) {
+      console.log("No entry for " + cmStyle);
+      return {};
+    }
+    return mergeStyles(entry);
+  }
 }
 
 class Themer {

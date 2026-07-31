@@ -1,0 +1,57 @@
+{
+  "sources": {
+    "document": "https://docs.google.com/document/d/1e611r8Jws6FqDe5DiRAsrLsKfFRr5AdojMR_lC_t8-o/edit",
+    "slides": "https://docs.google.com/presentation/d/1UhDXBJDUOytKy1lcdD7-Cc_AP3C0YILYbzGqpnXeKR4/edit"
+  },
+  "document": {
+    "codeSpans": [
+      "Use backticks to write `code` or constants: `12.3`.",
+      "path: `some/path`",
+      "number: `12`, `0.` or `.123` or `0.123`, but not `0.1.3`",
+      "strings: `\"foo\"`, or string/char: `'bar'`.",
+      "keywords: `null`, `undefined`, `true`, `false`, `nil`.",
+      "ipv4: `127.0.0.1`, but not `127.0.0.1.1`",
+      "Multiple `code spans` on the same line `foo bar`, while `` and ``` are ignored"
+    ],
+    "blocks": [
+      {"mode": "none", "paragraphs": ["```", "No syntax coloring.", "```"]},
+      {"mode": "js", "paragraphs": ["``` js", "function hello() {", "  console.log(\"hello world\");", "}", "```"]},
+      {"mode": "python", "paragraphs": ["``` python", "# Simple example.", "print(\"hello world\")", "```"]},
+      {"mode": "dart", "paragraphs": ["``` dart", "hello() {", "  print(\"hello world\");", "}", "```"]},
+      {"mode": "json", "paragraphs": ["``` json", "{", "  \"key\": [ \"value\", 1.23, true ]", "}", "```"]},
+      {"mode": "yaml", "paragraphs": ["``` yaml", "hello: world", "or: \"with string\"", "num: 3.14", "```"]},
+      {"mode": "c", "paragraphs": ["``` c", "#include <stdio.h>", "int main() {", "  return 0;", "}", "```"]},
+      {"mode": "c++", "paragraphs": ["``` c++", "#include <iostream>", "int main() {", "  return 0;", "}", "```"]},
+      {"mode": "go", "paragraphs": ["``` go", "package main", "func main() {", "    fmt.Println(\"hello world\")", "}", "```"]},
+      {"mode": "shell", "paragraphs": ["``` shell", "WHO=world", "echo \"hello $WHO\"", "```"]},
+      {"mode": "kotlin", "paragraphs": ["``` kotlin", "fun main(args: Array<String>) {", "  println(\"Hello, world!\")", "}", "```"]},
+      {"mode": "ts", "paragraphs": ["``` ts", "function hello(who : string) {", "  console.log(\"hello\" + who);", "}", "```"]},
+      {"mode": "java", "paragraphs": ["``` java", "class HelloWorld {", "  public static void main(String[] args) {}", "}", "```"]},
+      {"mode": "toit", "paragraphs": ["``` toit", "main:", "  print \"hello world\"", "```"]},
+      {"mode": "objective-c", "paragraphs": ["``` objective-c", "#import <Foundation/Foundation.h>", "int main() {", "  NSLog(@\"hello world\");", "}", "```"]},
+      {"mode": "scala", "paragraphs": ["``` scala", "object Hello {", "  def main() = println(\"hello world\")", "}", "```"]},
+      {"mode": "html", "paragraphs": ["``` html", "<!DOCTYPE html>", "<p>hello world</p>", "```"]},
+      {"mode": "xml", "paragraphs": ["``` xml", "<?xml version=\"1.0\"?>", "<foo>hello world</foo>", "```"]},
+      {"mode": "css", "paragraphs": ["``` css", "p {", "  color: green;", "}", "```"]},
+      {"mode": "jsx", "paragraphs": ["``` jsx", "let foo = (bar) => <a>{bar}</a>;", "```"]},
+      {"mode": "dockerfile", "paragraphs": ["``` dockerfile", "FROM ubuntu:18.04", "COPY . /app", "```"]},
+      {"mode": "sql", "paragraphs": ["``` sql", "SELECT name FROM employees", "ORDER BY name;", "```"]},
+      {"mode": "none", "paragraphs": ["```", "```"]},
+      {"mode": "dart", "paragraphs": ["``` dart", "```"]}
+    ],
+    "malformedBlocks": [
+      ["``` shellecho \"ok\"```"],
+      ["``` dart"],
+      ["```", "last entry without a closing delimiter"]
+    ]
+  },
+  "slides": [
+    {"slide": 2, "shapes": ["Some `title` with `code`", "``` toit\nfoo bar:\n  while true: print \"foo\"\n```", "```\n\n\n\n```", "```\n```", "`foo`", "``` dart\nmain() {\n  print(\"hello world\");\n}\n```"]},
+    {"slide": 3, "shapes": ["``` dart\nmain() {\n}\n```"]},
+    {"slide": 4, "shapes": ["Without backticks", "\u000b// some comment.\u000bmain:\u000b  print \"hello world\"\n\n// same, but with real new lines.\nmain:\n  print \"hello world\""]},
+    {"slide": 5, "shapes": ["yaml", "``` yaml\nfoo: bar\n```", "``` sql\nSELECT * FROM foo\n```"]},
+    {"slide": 6, "shapes": [" Code Spans", "path: `some/path`\nnumbers: `12`, `0.`, `0.123`\nstrings: `\"foo\"`, `'bar'`\nkeywords: `null`, `undefined`\nipv4: `127.0.0.1`\nmisc: `some` `code`", "Also works in `shapes`"]},
+    {"slide": 7, "shapes": ["Code Syntax", "Spans: Use backticks to write `code` or constants: `12.3`", "``` dart\u000bvoid main() {\u000b  print(\"Hello world\");\u000b}\u000b```", "``` ts\u000blet message: string= 'hello world';\u000bconsole.log(message);\u000b```", "``` go\u000bfunc hi() error {\u000b  return nil\u000b}\u000b```", "``` toit\u000bprint \"hello world\"\u000b```"]},
+    {"slide": 8, "shapes": ["Code Syntax", "Spans: Use backticks to write `code` or constants: `12.3`", "``` ts\nmessage : string = 'hello world'\nconsole.log(message)\n```", "Spans in `shapes`", "``` go\nfunc hi() error {\u000b  return nil\u000b}\n```", "``` toit\nmain:\n  print \"hello world\"\n```", "``` python\n# simple example\nprint(\"hello world\")\n```"]}
+  ]
+}
